@@ -2387,7 +2387,7 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers }) {
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt }) {
   const total = debts.reduce((sum, debt) => sum + debt.amount, 0);
   return (
     <div>
@@ -2404,6 +2404,8 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
               selectable={selectable}
               checked={selectedDebtIds?.includes(debt.id)}
               onToggle={() => setSelectedDebtIds?.((items) => toggle(items, debt.id))}
+              onEditDebt={onEditDebt}
+              onDeleteDebt={onDeleteDebt}
               members={appUsers || []}
             />
           ))
@@ -2415,7 +2417,7 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
   );
 }
 
-function DebtRow({ debt, selectable, checked, onToggle, members }) {
+function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onDeleteDebt }) {
   const counterparty = debtCounterpartyParts(debt, members);
   const splitAmount = debt.kind !== "loan" && members.length > 1 ? debt.amount / members.length : null;
   return (
@@ -2434,6 +2436,7 @@ function DebtRow({ debt, selectable, checked, onToggle, members }) {
           {splitAmount && <small className="debt-share"><span>TU PAGO</span> {money(splitAmount)}</small>}
         </span>
       </span>
+      <RowActions onEdit={onEditDebt ? () => onEditDebt(debt) : null} onDelete={onDeleteDebt ? () => onDeleteDebt(debt) : null} />
     </div>
   );
 }
