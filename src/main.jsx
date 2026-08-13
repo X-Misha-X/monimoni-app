@@ -2550,18 +2550,27 @@ function PaymentsPanel({ payments, compact, onEditPayment, onDeletePayment }) {
   );
 }
 
+function isRegisteredContactCandidate(member) {
+  return member?.memberStatus !== "ghost" && Boolean(member?.email);
+}
+
 function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveContact }) {
   const [query, setQuery] = useState("");
   const activeContacts = contacts.filter((contact) => contact.ownerProfileId === activeUser.id && contact.status !== "removed");
   const contactMemberIds = new Set(activeContacts.map((contact) => contact.memberId));
   const contactMembers = activeContacts
     .map((contact) => members.find((member) => member.id === contact.memberId))
-    .filter(Boolean)
+    .filter(isRegisteredContactCandidate)
     .sort((a, b) => a.name.localeCompare(b.name));
   const normalizedQuery = query.trim().toLowerCase();
   const availableMembers = members
+    .filter(isRegisteredContactCandidate)
     .filter((member) => member.id !== activeUser.id && !contactMemberIds.has(member.id))
-    .filter((member) => !normalizedQuery || member.name.toLowerCase().includes(normalizedQuery) || member.email?.toLowerCase?.().includes(normalizedQuery))
+    .filter((member) => {
+      const searchableName = (member.name || "").toLowerCase();
+      const searchableEmail = (member.email || "").toLowerCase();
+      return !normalizedQuery || searchableName.includes(normalizedQuery) || searchableEmail.includes(normalizedQuery);
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -2572,7 +2581,7 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar por nombre o email"
+          placeholder="Buscar por Email o nombre de usuario"
         />
       </div>
       <div className="contacts-grid">
