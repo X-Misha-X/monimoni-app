@@ -1155,6 +1155,7 @@ function Dashboard({
                 {activeView === "archivo" && (
                   <section className="glass-card panel">
                     <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} />
+                    <h3 className="archive-gallery-title">Galería</h3>
                     <EmptyState text="Todavía no hay elementos archivados." />
                   </section>
                 )}

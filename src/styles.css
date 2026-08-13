@@ -2137,6 +2137,13 @@ button {
   background: rgba(255, 116, 137, 0.16);
 }
 
+.archive-gallery-title {
+  margin: 18px 0 8px;
+  color: var(--milk);
+  font-size: 18px;
+  font-weight: 900;
+}
+
 .archive-delete.large {
   margin-top: 0;
   font-size: 14px;
