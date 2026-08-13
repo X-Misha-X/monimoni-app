@@ -488,6 +488,29 @@ button {
   font-weight: 900;
 }
 
+.monimon-editor-modal {
+  width: min(860px, 100%);
+}
+
+.monimon-editor-section {
+  margin-top: 16px;
+  border: 1px solid rgba(236, 156, 157, 0.16);
+  border-radius: 10px;
+  background: rgba(8, 7, 5, 0.2);
+  padding: 16px;
+}
+
+.monimon-editor-section label {
+  margin-top: 0;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
 .create-modal input,
 .member-row select {
   width: 100%;
@@ -504,8 +527,9 @@ button {
 
 .member-list {
   display: grid;
-  gap: 10px;
-  margin-top: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .member-row {
@@ -515,7 +539,8 @@ button {
 }
 
 .member-row select {
-  max-width: 360px;
+  min-width: 0;
+  max-width: none;
 }
 
 .member-row > button {
@@ -558,7 +583,8 @@ button {
 }
 
 .ghost-member-row input {
-  max-width: 360px;
+  min-width: 0;
+  max-width: none;
   margin-top: 0;
 }
 
@@ -576,7 +602,10 @@ button {
 .monimon-modal-actions {
   display: flex;
   justify-content: flex-start;
-  margin-top: 24px;
+  margin-top: 16px;
+  border: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .monimon-modal-actions .modal-create-btn {
@@ -586,7 +615,7 @@ button {
 .delete-monimon-zone {
   display: flex;
   justify-content: center;
-  margin-top: 54px;
+  margin-top: 34px;
   border-top: 1px solid rgba(255, 126, 134, 0.18);
   padding-top: 22px;
 }
@@ -2216,6 +2245,19 @@ button {
   .payment-direction,
   .payment-direction.with-swap {
     grid-template-columns: 1fr;
+  }
+
+  .member-list {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-heading-row .member-add {
+    justify-content: center;
   }
 
   .swap-users-btn {

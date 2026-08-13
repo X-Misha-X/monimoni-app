@@ -1662,53 +1662,59 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
 
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="create-monimon-title">
-      <div className="create-modal">
+      <div className="create-modal monimon-editor-modal">
         <div className="modal-head">
           <h2 id="create-monimon-title">{isEditing ? "Editar Mon!" : "Crear Mon!"}</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar">×</button>
         </div>
-        <label>NOMBRE DE MON!:</label>
-        <input value={monimonName} maxLength={50} onChange={(event) => setMonimonName(event.target.value.slice(0, 50))} placeholder="Ej: Viaje" />
-        <label>INTEGRANTES:</label>
-        <div className="member-list">
-          {memberIds.map((memberId, index) => (
-            <div className="member-row" key={`${memberId}-${index}`}>
-              <select
-                value={memberId}
-                onChange={(event) => {
-                  const next = [...memberIds];
-                  next[index] = event.target.value;
-                  setMemberIds(next);
-                }}
-              >
-                {appUsers.map((user) => (
-                  <option key={user.id} value={user.id} disabled={memberIds.includes(user.id) && user.id !== memberId}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-              {memberIds.length > 1 && (
-                <button type="button" className="member-remove" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
-                  <X size={17} />
-                </button>
-              )}
-            </div>
-          ))}
-          <div className="member-list-actions">
+        <section className="monimon-editor-section">
+          <label>NOMBRE DE MON!:</label>
+          <input value={monimonName} maxLength={50} onChange={(event) => setMonimonName(event.target.value.slice(0, 50))} placeholder="Ej: Viaje" />
+        </section>
+        <section className="monimon-editor-section">
+          <div className="section-heading-row">
+            <label>INTEGRANTES:</label>
             <button type="button" className="member-add" onClick={addMember} disabled={!availableUsers.length}>
               <Plus size={18} /> Agregar integrante
             </button>
           </div>
-        </div>
-        <label>INTEGRANTE NO REGISTRADO:</label>
-        <div className="member-row ghost-member-row">
-          <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Nombre provisorio" />
-          <button type="button" className="member-add" onClick={addGhostMember} aria-label="Agregar persona fantasma">
-            <Plus size={18} />
-          </button>
-        </div>
+          <div className="member-list">
+            {memberIds.map((memberId, index) => (
+              <div className="member-row" key={`${memberId}-${index}`}>
+                <select
+                  value={memberId}
+                  onChange={(event) => {
+                    const next = [...memberIds];
+                    next[index] = event.target.value;
+                    setMemberIds(next);
+                  }}
+                >
+                  {appUsers.map((user) => (
+                    <option key={user.id} value={user.id} disabled={memberIds.includes(user.id) && user.id !== memberId}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+                {memberIds.length > 1 && (
+                  <button type="button" className="member-remove" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
+                    <X size={17} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="monimon-editor-section ghost-section">
+          <label>INTEGRANTE NO REGISTRADO:</label>
+          <div className="member-row ghost-member-row">
+            <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Nombre provisorio" />
+            <button type="button" className="member-add" onClick={addGhostMember} aria-label="Agregar persona fantasma">
+              <Plus size={18} />
+            </button>
+          </div>
+        </section>
         {error && <p className="form-error">{error}</p>}
-        <div className="monimon-modal-actions">
+        <div className="monimon-modal-actions monimon-editor-section">
           <button type="button" className="primary-action modal-create-btn" onClick={saveMonimon}>
             {isEditing ? "ACTUALIZAR CAMBIOS" : "CREAR MONI MON!"}
           </button>
