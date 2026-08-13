@@ -2,7 +2,6 @@
 import { createRoot } from "react-dom/client";
 import {
   Archive,
-  ArrowRight,
   ArrowLeftRight,
   Bell,
   CalendarDays,
@@ -903,62 +902,84 @@ function LoginCard({
       </div>
 
       <form onSubmit={submitLogin} className="glass-card login-card">
+        <img src="/moni-logo-cropped.png" alt="moni mon!" className="login-card-logo" />
+
         <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
           <GoogleMark /> <span>Continuar con Google</span>
         </button>
 
-      {isRegister && (
-        <>
-          <label className="field-label" htmlFor="auth-name">Nombre</label>
-          <div className="pin-field auth-field">
-            <input
-              id="auth-name"
-              value={authName}
-              onChange={(event) => setAuthName(event.target.value.slice(0, 40))}
-              autoComplete="name"
-              placeholder="Tu nombre"
-            />
+        <div className="auth-divider">
+          <span>O ingresá con email</span>
+        </div>
+
+        {isRegister && (
+          <>
+            <label className="field-label" htmlFor="auth-name">Nombre</label>
+            <div className="pin-field auth-field">
+              <input
+                id="auth-name"
+                value={authName}
+                onChange={(event) => setAuthName(event.target.value.slice(0, 40))}
+                autoComplete="name"
+                placeholder="Tu nombre"
+              />
+            </div>
+          </>
+        )}
+
+        <div className="pin-field auth-field login-input-field">
+          <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
+          <input
+            id="auth-email"
+            aria-label="Usuario o Email"
+            value={authEmail}
+            onChange={(event) => setAuthEmail(event.target.value)}
+            autoComplete="email"
+            inputMode="email"
+            type="email"
+            placeholder="Usuario o Email"
+            required
+          />
+        </div>
+
+        <div className="pin-field login-input-field">
+          <span className="field-icon" aria-hidden="true"><LockKeyhole size={18} /></span>
+          <input
+            id="auth-password"
+            aria-label="Contraseña"
+            value={authPassword}
+            onChange={(event) => setAuthPassword(event.target.value)}
+            autoComplete={isRegister ? "new-password" : "current-password"}
+            type={showPassword ? "text" : "password"}
+            placeholder="Contraseña"
+            minLength={6}
+            required
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar u ocultar contraseña">
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+
+        {!isRegister && (
+          <div className="auth-options-row">
+            <label className="remember-session">
+              <input type="checkbox" />
+              <span>Mantenerse conectado</span>
+            </label>
+            <button type="button" className="forgot-password-link">Olvidaste tu contraseña?</button>
           </div>
-        </>
-      )}
+        )}
 
-      <div className="pin-field auth-field login-input-field">
-        <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
-        <input
-          id="auth-email"
-          aria-label="Usuario o Email"
-          value={authEmail}
-          onChange={(event) => setAuthEmail(event.target.value)}
-          autoComplete="email"
-          inputMode="email"
-          type="email"
-          placeholder="Usuario o Email"
-          required
-        />
-      </div>
-
-      <div className="pin-field login-input-field">
-        <span className="field-icon" aria-hidden="true"><LockKeyhole size={18} /></span>
-        <input
-          id="auth-password"
-          aria-label="Contraseña"
-          value={authPassword}
-          onChange={(event) => setAuthPassword(event.target.value)}
-          autoComplete={isRegister ? "new-password" : "current-password"}
-          type={showPassword ? "text" : "password"}
-          placeholder="Contraseña"
-          minLength={6}
-          required
-        />
-        <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar u ocultar contraseña">
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        {error && <p className="form-error">{error}</p>}
+        <button className="primary-action login-action" disabled={authLoading}>
+          {authLoading ? "CARGANDO" : isRegister ? "CREAR CUENTA" : "INGRESAR"}
         </button>
-      </div>
-
-      {error && <p className="form-error">{error}</p>}
-      <button className="primary-action login-action" disabled={authLoading}>
-        {authLoading ? "CARGANDO" : isRegister ? "CREAR CUENTA" : "INGRESAR"} <ArrowRight size={20} />
-      </button>
+        <p className="auth-switch-copy">
+          {isRegister ? "Ya tenés cuenta?" : "Nuevo en MONI MON!?"}{" "}
+          <button type="button" onClick={() => setAuthMode(isRegister ? "login" : "register")}>
+            {isRegister ? "Ingresá" : "Crea una cuenta"}
+          </button>
+        </p>
       </form>
     </div>
   );
