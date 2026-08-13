@@ -1377,7 +1377,7 @@ function Dashboard({
                 {activeView === "contactos" && (
                   <ContactsPanel
                     activeUser={activeUser}
-                    members={memberOptions}
+                    members={appUsers}
                     contacts={contacts}
                     onAddContact={addContact}
                     onRemoveContact={removeContact}
