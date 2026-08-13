@@ -423,6 +423,29 @@ button {
   padding-right: 16px;
 }
 
+.login-input-field {
+  margin-top: 24px;
+}
+
+.login-input-field + .login-input-field {
+  margin-top: 14px;
+}
+
+.field-icon {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  width: 52px;
+  flex: 0 0 52px;
+  color: var(--rose);
+  border-right: 1px solid var(--line);
+  background: rgba(68, 48, 37, 0.32);
+}
+
+.login-input-field input {
+  padding-left: 16px;
+}
+
 .form-error {
   margin-top: 12px;
   color: var(--red);

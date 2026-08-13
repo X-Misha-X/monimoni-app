@@ -31,6 +31,7 @@ import {
   ShieldAlert,
   Trash2,
   Upload,
+  UserRound,
   X
 } from "lucide-react";
 import "./styles.css";
@@ -898,8 +899,7 @@ function LoginCard({
   return (
     <form onSubmit={submitLogin} className="glass-card login-card">
       <div className="card-heading">
-        <span className="icon-badge"><LockKeyhole size={18} /></span>
-        <h2>{isRegister ? "Crear cuenta" : "Ingresar"}</h2>
+        <h2>{isRegister ? "Crear cuenta" : "Ingresa a tu cuenta"}</h2>
       </div>
 
       <div className="auth-mode-tabs" role="tablist" aria-label="Modo de acceso">
@@ -922,29 +922,31 @@ function LoginCard({
         </>
       )}
 
-      <label className="field-label" htmlFor="auth-email">Email</label>
-      <div className="pin-field auth-field">
+      <div className="pin-field auth-field login-input-field">
+        <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
         <input
           id="auth-email"
+          aria-label="Usuario o Email"
           value={authEmail}
           onChange={(event) => setAuthEmail(event.target.value)}
           autoComplete="email"
           inputMode="email"
           type="email"
-          placeholder="tu@email.com"
+          placeholder="Usuario o Email"
           required
         />
       </div>
 
-      <label className="field-label" htmlFor="auth-password">Contraseña</label>
-      <div className="pin-field">
+      <div className="pin-field login-input-field">
+        <span className="field-icon" aria-hidden="true"><LockKeyhole size={18} /></span>
         <input
           id="auth-password"
+          aria-label="Contraseña"
           value={authPassword}
           onChange={(event) => setAuthPassword(event.target.value)}
           autoComplete={isRegister ? "new-password" : "current-password"}
           type={showPassword ? "text" : "password"}
-          placeholder="••••••••"
+          placeholder="Contraseña"
           minLength={6}
           required
         />
