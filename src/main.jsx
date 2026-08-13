@@ -1261,7 +1261,7 @@ function Dashboard({
         </div>
       </div>
       <MobileNav activeView={activeView} setActiveView={setActiveView} items={currentNavItems} />
-      {showCreateMonimon && (
+      {showCreateMonimon && !editingMonimonId && (
         <CreateMonimonModal
           activeUser={activeUser}
           appUsers={appUsers}
@@ -2063,10 +2063,12 @@ function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members 
             >
               <div className="payment-card-head">
                 <span className={`check ${isSelected ? "active" : ""}`}>{isSelected && <Check size={13} />}</span>
-                <time>{debt.date}</time>
+                <div>
+                  <b>{debt.title}</b>
+                  <time>{debt.date}</time>
+                </div>
               </div>
-              <b>{debt.title}</b>
-              <strong>Importe {money(splitAmount, debt.currency)}</strong>
+              <strong><span>Importe</span> {money(splitAmount, debt.currency)}</strong>
               <button
                 type="button"
                 onClick={(event) => {

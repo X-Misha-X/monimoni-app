@@ -1988,19 +1988,19 @@ button {
 
 .payment-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
   gap: 12px;
 }
 
 .payment-debt-card {
   display: grid;
-  gap: 9px;
+  gap: 10px;
   align-content: start;
-  min-height: 178px;
+  min-height: 132px;
   border: 1px solid rgba(236, 156, 157, 0.2);
   border-radius: 8px;
-  background: rgba(78, 37, 36, 0.58);
-  padding: 14px;
+  background: rgba(8, 7, 5, 0.32);
+  padding: 12px;
   color: var(--milk);
   text-align: left;
   cursor: pointer;
@@ -2008,29 +2008,45 @@ button {
 
 .payment-debt-card.selected {
   border-color: rgba(199, 112, 145, 0.86);
-  box-shadow: 0 0 0 1px rgba(199, 112, 145, 0.32);
+  background: rgba(33, 28, 26, 0.62);
+  box-shadow: 0 0 0 1px rgba(199, 112, 145, 0.24);
 }
 
 .payment-card-head {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-.payment-card-head time {
-  font-size: 20px;
+.payment-card-head > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.payment-card-head b {
+  color: var(--milk);
+  font-size: 15px;
   font-weight: 900;
 }
 
-.payment-debt-card > b {
-  font-size: 19px;
+.payment-card-head time {
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 900;
 }
 
 .payment-debt-card > strong {
   color: var(--sakura);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 900;
+}
+
+.payment-debt-card > strong span {
+  color: var(--muted);
+  font-size: 10px;
+  margin-right: 6px;
+  text-transform: uppercase;
 }
 
 .payment-debt-card > button {
@@ -2039,7 +2055,7 @@ button {
   background: transparent;
   color: var(--peach);
   padding: 2px 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 900;
 }
 
