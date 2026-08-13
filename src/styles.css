@@ -1126,14 +1126,16 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
+  min-height: 50px;
   border: 1px solid rgba(236, 156, 157, 0.24);
-  border-radius: 999px;
+  border-radius: 8px;
   background: rgba(33, 28, 26, 0.58);
   color: var(--milk);
-  padding: 0 15px;
+  padding: 0 13px;
   font-size: 13px;
   font-weight: 900;
+  box-shadow: inset 4px 0 0 rgba(222, 160, 179, 0.38);
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
 }
 
 .header-contacts-btn:hover,
@@ -1141,6 +1143,7 @@ button {
   border-color: rgba(236, 156, 157, 0.42);
   background: rgba(191, 115, 135, 0.2);
   color: var(--rose);
+  transform: translateY(-1px);
 }
 
 .profile-area {

@@ -1351,13 +1351,15 @@ function Dashboard({
             </div>
             <div className="dashboard-grid">
               <section className="main-column">
-                <SummaryHeader
-                  activeUser={activeUser}
-                  otherUser={otherUser}
-                  theyOwe={theyOwe}
-                  iOwe={iOwe}
-                  summaryByCurrency={summaryByCurrency}
-                />
+                {activeView !== "contactos" && (
+                  <SummaryHeader
+                    activeUser={activeUser}
+                    otherUser={otherUser}
+                    theyOwe={theyOwe}
+                    iOwe={iOwe}
+                    summaryByCurrency={summaryByCurrency}
+                  />
+                )}
                 {activeView === "gastos" && (
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
