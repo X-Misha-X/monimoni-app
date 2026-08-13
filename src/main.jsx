@@ -70,7 +70,6 @@ const navItems = [
   { id: "prestamos", label: "Préstamos", icon: FileText },
   { id: "pagos", label: "Historial", icon: History },
   { id: "archivo", label: "Archivo", icon: Archive },
-  { id: "contactos", label: "Contactos", icon: BookUser },
   { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
@@ -81,11 +80,10 @@ const groupNavItems = [
   { id: "prestamos", label: "Préstamos", icon: FileText },
   { id: "pagos", label: "Historial", icon: History },
   { id: "archivo", label: "Archivo", icon: Archive },
-  { id: "contactos", label: "Contactos", icon: BookUser },
   { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
-const validViewIds = new Set(groupNavItems.map((item) => item.id));
+const validViewIds = new Set([...groupNavItems.map((item) => item.id), "contactos"]);
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function money(value, currency = "ARS") {
@@ -178,6 +176,34 @@ function profileFromAuthUser(user) {
     role: user.app_metadata?.role || user.user_metadata?.role || "user",
     avatarSrc: metadata.avatar_url || avatarOptions[0].src,
     ...avatarCrop
+  };
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    const json = decodeURIComponent(
+      Array.from(atob(padded))
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function authUserFromAccessToken(accessToken) {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload?.sub) return null;
+  return {
+    id: payload.sub,
+    email: payload.email || "",
+    app_metadata: payload.app_metadata || {},
+    user_metadata: payload.user_metadata || {}
   };
 }
 
@@ -579,6 +605,8 @@ function App() {
       expiresAt: payload.expires_at || null,
       createdAt: Date.now()
     });
+    setSelectedMonimonId("personal");
+    setActiveView("resumen");
     setAuthPassword("");
     setError("");
   }
@@ -588,20 +616,19 @@ function App() {
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
     if (!accessToken) return;
-    apiRequest("/api/auth/user", {
-      method: "POST",
-      body: JSON.stringify({ access_token: accessToken })
-    })
-      .then((user) => {
-        rememberAuthSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          token_type: params.get("token_type") || "bearer",
-          user
-        });
-        window.history.replaceState(null, "", window.location.pathname);
-      })
-      .catch((authError) => setError(authError.message));
+    const tokenUser = authUserFromAccessToken(accessToken);
+    if (tokenUser) {
+      rememberAuthSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_type: params.get("token_type") || "bearer",
+        user: tokenUser
+      });
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
+    window.history.replaceState(null, "", window.location.pathname);
+    setError("No se pudo leer la sesión de Google.");
   }, []);
 
   async function submitLogin(event) {
@@ -1125,7 +1152,8 @@ function Dashboard({
   const currentNavItems = selectedMonimonId === "personal" ? navItems : groupNavItems;
   const selectedMonimon = monimons.find((monimon) => monimon.id === selectedMonimonId);
   const editingMonimon = editingMonimonId ? monimons.find((monimon) => monimon.id === editingMonimonId) : null;
-  const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : [];
+  const personalMembers = activeUser ? [activeUser] : [];
+  const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : personalMembers;
   const isMonimonMode = selectedMonimonId !== "personal";
   const shareUrl = `${window.location.origin}${window.location.pathname}#monimon=${selectedMonimonId}`;
   const incomingDebts = openExpenses.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
@@ -1236,7 +1264,13 @@ function Dashboard({
             <img src="/moni-logo.png" alt="moni mon!" className="app-logo" />
           </div>
           <div className="flex items-center gap-3">
-            <button className="icon-btn" aria-label="Notificaciones"><Bell size={18} /></button>
+            <button
+              type="button"
+              className={`header-contacts-btn ${activeView === "contactos" ? "active" : ""}`}
+              onClick={() => setActiveView("contactos")}
+            >
+              <BookUser size={18} /> Contactos
+            </button>
             <div className="profile-area">
               <button type="button" className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)}>
                 <Avatar user={activeUser} />
@@ -1269,6 +1303,16 @@ function Dashboard({
                     <option value="personal">{personalSpaceName.toUpperCase()}</option>
                     {monimons.map((monimon) => <option key={monimon.id} value={monimon.id}>{monimon.name}</option>)}
                   </select>
+                  {selectedMonimonId === "personal" && (
+                    <button
+                      type="button"
+                      className="edit-monimon-btn"
+                      onClick={() => setProfileModal("personal-space")}
+                      aria-label="Editar espacio personal"
+                    >
+                      <Settings size={16} />
+                    </button>
+                  )}
                   {selectedMonimon && (
                     <button
                       type="button"
@@ -1288,11 +1332,9 @@ function Dashboard({
                     </button>
                   )}
                 </div>
-                {selectedMonimonId !== "personal" && (
-                  <div className="workspace-people">
-                    {membersForSelectedMonimon.map((member) => <span key={member.id}>{member.name}</span>)}
-                  </div>
-                )}
+                <div className="workspace-people">
+                  {membersForSelectedMonimon.map((member) => <span key={member.id}>{member.name}</span>)}
+                </div>
               </div>
               <div className="workspace-actions">
                 <button
@@ -1460,6 +1502,13 @@ function Dashboard({
           onClose={() => setProfileModal(null)}
         />
       )}
+      {profileModal === "personal-space" && (
+        <PersonalSpaceModal
+          personalSpaceName={personalSpaceName}
+          setPersonalSpaceName={setPersonalSpaceName}
+          onClose={() => setProfileModal(null)}
+        />
+      )}
       {profileModal === "logout" && (
         <ConfirmLogoutModal
           onCancel={() => setProfileModal(null)}
@@ -1590,6 +1639,36 @@ function AvatarModal({ activeUser, updateActiveUser, onClose }) {
           ))}
         </div>
         <button type="button" className="primary-action modal-create-btn" onClick={saveAvatar}>GUARDAR AVATAR</button>
+      </div>
+    </div>
+  );
+}
+
+function PersonalSpaceModal({ personalSpaceName, setPersonalSpaceName, onClose }) {
+  const [spaceName, setSpaceName] = useState(personalSpaceName);
+  const [error, setError] = useState("");
+
+  function savePersonalSpace() {
+    const cleanName = spaceName.trim().slice(0, 32);
+    if (!cleanName) {
+      setError("Ingresá un nombre.");
+      return;
+    }
+    setPersonalSpaceName(cleanName.toUpperCase());
+    onClose();
+  }
+
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="personal-space-title">
+      <div className="create-modal settings-modal">
+        <div className="modal-head">
+          <h2 id="personal-space-title">Editar Personal</h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
+        </div>
+        <label>Nombre del espacio</label>
+        <input value={spaceName} maxLength={32} onChange={(event) => setSpaceName(event.target.value.toUpperCase())} />
+        {error && <p className="form-error">{error}</p>}
+        <button type="button" className="primary-action modal-create-btn" onClick={savePersonalSpace}>GUARDAR</button>
       </div>
     </div>
   );
