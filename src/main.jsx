@@ -2394,7 +2394,7 @@ function DebtRow({ debt, selectable, checked, onToggle, members }) {
         </span>
         <span className="debt-line">
           <small className="counterparty-line">De <span>{counterparty.fromName}</span> para <span>{counterparty.toName}</span></small>
-          {splitAmount && <small className="debt-share"><span>TU PARTE</span> {money(splitAmount)}</small>}
+          {splitAmount && <small className="debt-share"><span>TU PAGO</span> {money(splitAmount)}</small>}
         </span>
       </span>
     </div>
