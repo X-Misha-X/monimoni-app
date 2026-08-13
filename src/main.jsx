@@ -2069,11 +2069,9 @@ function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members 
             >
               <div className="payment-card-head">
                 <span className={`check ${isSelected ? "active" : ""}`}>{isSelected && <Check size={13} />}</span>
-                <div>
-                  <time>{debt.date}</time>
-                  <b>{debt.title}</b>
-                </div>
+                <time>{debt.date}</time>
               </div>
+              <b className="payment-card-title">{debt.title}</b>
               <strong><span>Importe</span> {money(splitAmount, debt.currency)}</strong>
               <button
                 type="button"

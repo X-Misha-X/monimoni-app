@@ -2017,26 +2017,24 @@ button {
 }
 
 .payment-card-head {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
   gap: 10px;
 }
 
-.payment-card-head > div {
-  display: contents;
-  min-width: 0;
-}
-
-.payment-card-head b {
+.payment-card-title {
+  display: block;
+  width: 100%;
   color: var(--milk);
   font-size: 15px;
   font-weight: 900;
-  grid-column: 1 / -1;
-  margin-top: 12px;
-  padding-left: 32px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .payment-card-head time {
+  justify-self: end;
   margin-left: auto;
   color: var(--muted);
   font-size: 12px;
