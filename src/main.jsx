@@ -775,7 +775,7 @@ function App() {
         <div className="ambient" />
         <section className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-4 py-8 lg:grid-cols-[1fr_430px] lg:px-8">
           <div className="brand-copy">
-            <img src="/moni-logo.png" alt="moni mon!" className="hero-logo" />
+            <img src="/moni-logo-cropped.png" alt="moni mon!" className="hero-logo" />
             <h1>Las cuentas claritas.</h1>
             <p>La app que conserva amistades.</p>
             <div className="hero-mascots">
