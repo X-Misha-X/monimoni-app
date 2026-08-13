@@ -197,6 +197,7 @@ function normalizeDebts(items) {
         currency: item.currency || "ARS",
         date: item.date || formatISODate(todayISO()),
         status: item.status || "open",
+        kind: item.kind === "loan" ? "loan" : "expense",
         monimonId: item.monimonId || "personal"
       }))
     : [];
@@ -291,7 +292,7 @@ function normalizeProfiles(items) {
 }
 
 function debtShareFor(debt, memberId, members) {
-  if (members.length > 1) {
+  if (debt.kind !== "loan" && members.length > 1) {
     const participantIds = members.map((member) => member.id);
     if (!participantIds.includes(memberId) || debt.fromMemberId === memberId) return 0;
     return debt.amount / participantIds.length;
@@ -721,7 +722,7 @@ function App() {
     )));
   }
 
-  function registerDebt({ fromId, toId, title, amount, currency, date }) {
+  function registerDebt({ fromId, toId, title, amount, currency, date, kind = "expense" }) {
     if (!activeUser || !fromId || !toId || !title.trim() || amount <= 0) return false;
     setDebts((items) => [
       {
@@ -733,6 +734,7 @@ function App() {
         amount,
         currency,
         date: formatISODate(date || todayISO()),
+        kind,
         status: "open"
       },
       ...items
@@ -1008,27 +1010,32 @@ function Dashboard({
   const scopedPayments = payments.filter((payment) => payment.monimonId === selectedMonimonId);
   const scopedPaymentRequests = paymentRequests.filter((request) => request.monimonId === selectedMonimonId);
   const openDebts = scopedDebts.filter((debt) => debt.status === "open");
+  const openExpenses = openDebts.filter((debt) => debt.kind !== "loan");
+  const openLoans = openDebts.filter((debt) => debt.kind === "loan");
   const currentNavItems = selectedMonimonId === "personal" ? navItems : groupNavItems;
   const selectedMonimon = monimons.find((monimon) => monimon.id === selectedMonimonId);
   const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : [];
   const isMonimonMode = selectedMonimonId !== "personal";
   const shareUrl = `${window.location.origin}${window.location.pathname}#monimon=${selectedMonimonId}`;
-  const incomingDebts = openDebts.filter((debt) => debt.fromMemberId === activeUser.id);
-  const outgoingDebts = openDebts.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
+  const incomingDebts = openExpenses.filter((debt) => debt.fromMemberId === activeUser.id);
+  const outgoingDebts = openExpenses.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
+  const incomingLoans = openLoans.filter((debt) => debt.fromMemberId === activeUser.id);
+  const outgoingLoans = openLoans.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const theyOwe = incomingDebts.reduce((sum, debt) => {
-    if (membersForSelectedMonimon.length > 1) {
+    if (debt.kind !== "loan" && membersForSelectedMonimon.length > 1) {
       const memberCount = membersForSelectedMonimon.length || 1;
       return sum + debt.amount - debt.amount / memberCount;
     }
     return sum + debt.amount;
-  }, 0);
-  const iOwe = outgoingDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
+  }, 0) + incomingLoans.reduce((sum, debt) => sum + debt.amount, 0);
+  const iOwe = outgoingDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0)
+    + outgoingLoans.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
   const selectedDebts = outgoingDebts.filter((debt) => selectedDebtIds.includes(debt.id));
   const selectedTotal = selectedDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
-  function saveEditedDebt({ id, title, amount, currency, date, fromMemberId, toMemberId }) {
+  function saveEditedDebt({ id, title, amount, currency, date, fromMemberId, toMemberId, kind }) {
     const parsedAmount = parseAmountInput(amount);
     if (!title.trim() || parsedAmount <= 0) return;
-    setDebts((items) => items.map((item) => (item.id === id ? { ...item, title: title.trim(), amount: parsedAmount, currency, date, fromMemberId, toMemberId } : item)));
+    setDebts((items) => items.map((item) => (item.id === id ? { ...item, title: title.trim(), amount: parsedAmount, currency, date, fromMemberId, toMemberId, kind: kind || item.kind || "expense" } : item)));
     setEditingDebt(null);
   }
 
@@ -1149,7 +1156,7 @@ function Dashboard({
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
                 {activeView === "prestamos" && (
-                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Préstamos" action="Nuevo préstamo" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
+                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingLoans} outgoingDebts={outgoingLoans} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Préstamos" action="Nuevo préstamo" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
                 {activeView === "pagos" && <PaymentsPanel payments={scopedPayments} onEditPayment={setEditingPayment} onDeletePayment={deletePayment} />}
                 {activeView === "archivo" && (
@@ -1258,6 +1265,7 @@ function Dashboard({
           selectedMonimon={selectedMonimon}
           selectedMonimonId={selectedMonimonId}
           title={activeView === "prestamos" ? "Nuevo préstamo" : "Nuevo gasto"}
+          kind={activeView === "prestamos" ? "loan" : "expense"}
           registerDebt={registerDebt}
           onClose={() => setShowNewDebt(false)}
         />
@@ -1980,13 +1988,13 @@ function PaymentPanel({
   );
 }
 
-function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, title: modalTitle = "Nuevo gasto", registerDebt, onClose }) {
+function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, title: modalTitle = "Nuevo gasto", kind = "expense", registerDebt, onClose }) {
   const monimonMemberOptions = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : appUsers;
   const otherUser = monimonMemberOptions.find((user) => user.id !== activeUser.id) || appUsers.find((user) => user.id !== activeUser.id);
   const isMonimonMode = selectedMonimonId !== "personal";
-  const allowGroupTarget = monimonMemberOptions.length > 2;
+  const allowGroupTarget = kind === "expense" && monimonMemberOptions.length > 2;
   const [fromId, setFromId] = useState(activeUser.id);
-  const [toId, setToId] = useState(groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
+  const [toId, setToId] = useState(kind === "loan" ? otherUser?.id : groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
   const [title, setTitle] = useState("");
   const [amountInput, setAmountInput] = useState("");
   const [currency, setCurrency] = useState("ARS");
@@ -2006,7 +2014,8 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
       title: title || "General",
       amount: parseAmountInput(amountInput),
       currency,
-      date
+      date,
+      kind
     });
     if (!saved) setError("Completá el motivo y el importe.");
   }
@@ -2019,7 +2028,7 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
           <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
         </div>
         <div className="new-payment-box">
-          <label>Fecha de gasto</label>
+          <label>{kind === "loan" ? "Fecha de préstamo" : "Fecha de gasto"}</label>
           <div className="date-input">
             <button
               type="button"
@@ -2081,7 +2090,9 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
             />
           </div>
           {error && <p className="form-error payment-error">{error}</p>}
-          <button type="button" onClick={saveDebt} className="primary-action save-payment save-debt">Guardar gasto</button>
+          <button type="button" onClick={saveDebt} className="primary-action save-payment save-debt">
+            {kind === "loan" ? "Guardar préstamo" : "Guardar gasto"}
+          </button>
         </div>
       </div>
     </div>
@@ -2130,7 +2141,8 @@ function EditAmountModal({ title, item, nameKey, onClose, onSave }) {
 function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, debt, onClose, onSave }) {
   const monimonMemberOptions = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : appUsers;
   const isMonimonMode = selectedMonimonId !== "personal";
-  const allowGroupTarget = monimonMemberOptions.length > 2;
+  const isLoan = debt.kind === "loan";
+  const allowGroupTarget = !isLoan && monimonMemberOptions.length > 2;
   const otherUser = monimonMemberOptions.find((user) => user.id !== activeUser.id) || appUsers.find((user) => user.id !== activeUser.id);
   const [fromId, setFromId] = useState(debt.fromMemberId || activeUser.id);
   const [toId, setToId] = useState(debt.toMemberId === "group" && !allowGroupTarget ? otherUser?.id : debt.toMemberId || groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
@@ -2151,14 +2163,14 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
       setError("Completá el motivo y el importe.");
       return;
     }
-    onSave({ id: debt.id, title, amount, currency, date: formatISODate(date), fromMemberId: fromId, toMemberId: toId });
+    onSave({ id: debt.id, title, amount, currency, date: formatISODate(date), fromMemberId: fromId, toMemberId: toId, kind: debt.kind || "expense" });
   }
 
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="edit-debt-title">
       <div className="create-modal form-modal">
         <div className="modal-head">
-          <h2 id="edit-debt-title">Editar gasto</h2>
+          <h2 id="edit-debt-title">{isLoan ? "Editar préstamo" : "Editar gasto"}</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
         </div>
         <div className="new-payment-box">
@@ -2384,7 +2396,7 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
 
 function DebtRow({ debt, selectable, checked, onToggle, members }) {
   const counterparty = debtCounterpartyParts(debt, members);
-  const splitAmount = members.length > 1 ? debt.amount / members.length : null;
+  const splitAmount = debt.kind !== "loan" && members.length > 1 ? debt.amount / members.length : null;
   return (
     <div role={selectable ? "button" : undefined} tabIndex={selectable ? 0 : undefined} onClick={onToggle} className="debt-row">
       <span className="min-w-0 flex-1">
