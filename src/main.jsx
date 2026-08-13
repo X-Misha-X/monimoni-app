@@ -897,15 +897,15 @@ function LoginCard({
 }) {
   const isRegister = authMode === "register";
   return (
-    <form onSubmit={submitLogin} className="glass-card login-card">
-      <div className="card-heading">
+    <div className="login-panel">
+      <div className="card-heading login-heading">
         <h2>{isRegister ? "Crear cuenta" : "Ingresa a tu cuenta"}</h2>
       </div>
 
-      <div className="auth-mode-tabs" role="tablist" aria-label="Modo de acceso">
-        <button type="button" className={authMode === "login" ? "active" : ""} onClick={() => setAuthMode("login")}>Ingresar</button>
-        <button type="button" className={isRegister ? "active" : ""} onClick={() => setAuthMode("register")}>Crear cuenta</button>
-      </div>
+      <form onSubmit={submitLogin} className="glass-card login-card">
+        <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
+          <GoogleMark /> <span>Continuar con Google</span>
+        </button>
 
       {isRegister && (
         <>
@@ -957,12 +957,10 @@ function LoginCard({
 
       {error && <p className="form-error">{error}</p>}
       <button className="primary-action login-action" disabled={authLoading}>
-        {authLoading ? "CARGANDO" : isRegister ? "CREAR CUENTA" : "CONFIRMAR"} <ArrowRight size={20} />
+        {authLoading ? "CARGANDO" : isRegister ? "CREAR CUENTA" : "INGRESAR"} <ArrowRight size={20} />
       </button>
-      <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
-        <GoogleMark /> <span>Continuar con Google</span>
-      </button>
-    </form>
+      </form>
+    </div>
   );
 }
 
