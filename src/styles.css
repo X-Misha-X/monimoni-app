@@ -1517,6 +1517,7 @@ button {
 
 .debt-title-line b {
   min-width: 0;
+  flex: 1;
 }
 
 .debt-line {
@@ -2035,7 +2036,7 @@ button {
   display: inline-flex;
   flex: 0 0 auto;
   gap: 6px;
-  margin-left: 8px;
+  margin-left: auto;
 }
 
 .row-actions button {

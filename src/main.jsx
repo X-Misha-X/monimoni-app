@@ -2017,6 +2017,7 @@ function PaymentPanel({
         title="Pagos pendientes"
         tone="positive"
         debts={pendingDebts}
+        hideHeading
         selectable
         selectedDebtIds={selectedDebtIds}
         setSelectedDebtIds={setSelectedDebtIds}
@@ -2409,14 +2410,16 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt }) {
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt, hideHeading }) {
   const total = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
   return (
     <div>
-      <div className="group-heading">
-        <span className={tone}>{title}</span>
-        <b className={tone}>{money(total)}</b>
-      </div>
+      {!hideHeading && (
+        <div className="group-heading">
+          <span className={tone}>{title}</span>
+          <b className={tone}>{money(total)}</b>
+        </div>
+      )}
       <div className="debt-list">
         {debts.length ? (
           debts.map((debt) => (
@@ -2448,17 +2451,17 @@ function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onD
         <span className="debt-title-line">
           {selectable && <span className={`check ${checked ? "active" : ""}`}>{checked && <Check size={13} />}</span>}
           <b>{debt.title}</b>
+          <RowActions onEdit={onEditDebt ? () => onEditDebt(debt) : null} onDelete={onDeleteDebt ? () => onDeleteDebt(debt) : null} />
         </span>
         <span className="debt-line">
           <small>{debt.date}</small>
           <strong><span>IMPORTE TOTAL</span> {money(debt.amount)}</strong>
         </span>
         <span className="debt-line">
-          <small className="counterparty-line">De <span>{counterparty.fromName}</span> para <span>{counterparty.toName}</span></small>
+          <small className="counterparty-line">Pagado por <span>{counterparty.fromName}</span></small>
           {splitAmount && <small className="debt-share"><span>IMPORTE DIVIDIDO</span> {money(splitAmount)}</small>}
         </span>
       </span>
-      <RowActions onEdit={onEditDebt ? () => onEditDebt(debt) : null} onDelete={onDeleteDebt ? () => onDeleteDebt(debt) : null} />
     </div>
   );
 }
