@@ -512,7 +512,8 @@ button {
 }
 
 .create-modal input,
-.member-row select {
+.member-row select,
+.member-add-grid select {
   width: 100%;
   min-height: 48px;
   margin-top: 8px;
@@ -523,6 +524,50 @@ button {
   padding: 0 12px;
   font-weight: 900;
   outline: none;
+}
+
+.member-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.member-chip {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(236, 156, 157, 0.32);
+  border-radius: 8px;
+  background: rgba(171, 73, 93, 0.36);
+  color: var(--milk);
+  padding: 0 12px;
+  font-weight: 900;
+}
+
+.member-chip button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 6px;
+  background: rgba(8, 7, 5, 0.28);
+  color: var(--rose);
+  padding: 0;
+}
+
+.member-add-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr) 54px;
+  gap: 12px;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.member-add-grid input,
+.member-add-grid select {
+  margin-top: 0;
 }
 
 .member-list {
@@ -576,6 +621,12 @@ button {
 .member-add:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.member-add.square {
+  width: 54px;
+  min-height: 48px;
+  padding: 0;
 }
 
 .ghost-member-row {
@@ -2273,6 +2324,10 @@ button {
 
   .member-list {
     grid-template-columns: 1fr;
+  }
+
+  .member-add-grid {
+    grid-template-columns: minmax(0, 1fr) 54px;
   }
 
   .section-heading-row {

@@ -1628,14 +1628,17 @@ function ArchivePreviewModal({ file, onClose, onDelete }) {
 function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimons, replaceMonimons, setSelectedMonimonId, onDeleteMonimon, onClose }) {
   const [monimonName, setMonimonName] = useState(monimon?.name || "");
   const [memberIds, setMemberIds] = useState(monimon?.members || [activeUser.id]);
+  const [selectedMemberId, setSelectedMemberId] = useState("");
   const [ghostName, setGhostName] = useState("");
   const [error, setError] = useState("");
   const availableUsers = appUsers.filter((user) => !memberIds.includes(user.id));
   const isEditing = Boolean(monimon);
 
   function addMember() {
-    if (!availableUsers.length) return;
-    setMemberIds((items) => [...items, availableUsers[0].id]);
+    const nextMemberId = selectedMemberId || availableUsers[0]?.id;
+    if (!nextMemberId) return;
+    setMemberIds((items) => [...items, nextMemberId]);
+    setSelectedMemberId("");
   }
 
   function removeMember(indexToRemove) {
@@ -1711,44 +1714,32 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
           <input value={monimonName} maxLength={50} onChange={(event) => setMonimonName(event.target.value.slice(0, 50))} placeholder="Ej: Viaje" />
         </section>
         <section className="monimon-editor-section">
-          <div className="section-heading-row">
-            <label>INTEGRANTES:</label>
-            <button type="button" className="member-add" onClick={addMember} disabled={!availableUsers.length}>
-              <Plus size={18} /> Agregar integrante
-            </button>
-          </div>
-          <div className="member-list">
+          <label>INTEGRANTES:</label>
+          <div className="member-chip-list">
             {memberIds.map((memberId, index) => (
-              <div className="member-row" key={`${memberId}-${index}`}>
-                <select
-                  value={memberId}
-                  onChange={(event) => {
-                    const next = [...memberIds];
-                    next[index] = event.target.value;
-                    setMemberIds(next);
-                  }}
-                >
-                  {appUsers.map((user) => (
-                    <option key={user.id} value={user.id} disabled={memberIds.includes(user.id) && user.id !== memberId}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
+              <span className="member-chip" key={`${memberId}-${index}`}>
+                {appUsers.find((user) => user.id === memberId)?.name || memberId.toUpperCase()}
                 {memberIds.length > 1 && (
-                  <button type="button" className="member-remove" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
-                    <X size={17} />
+                  <button type="button" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
+                    <X size={15} />
                   </button>
                 )}
-              </div>
+              </span>
             ))}
           </div>
-        </section>
-        <section className="monimon-editor-section ghost-section">
-          <label>INTEGRANTE NO REGISTRADO:</label>
-          <div className="member-row ghost-member-row">
-            <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Nombre provisorio" />
-            <button type="button" className="member-add" onClick={addGhostMember} aria-label="Agregar persona fantasma">
-              <Plus size={18} />
+          <div className="member-add-grid">
+            <select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} disabled={!availableUsers.length}>
+              <option value="">Seleccionar contacto</option>
+              {availableUsers.map((user) => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+            <button type="button" className="member-add square" onClick={addMember} disabled={!availableUsers.length} aria-label="Agregar integrante">
+              <Plus size={22} />
+            </button>
+            <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Escribir a mano" />
+            <button type="button" className="member-add square" onClick={addGhostMember} aria-label="Agregar no registrado">
+              <Plus size={22} />
             </button>
           </div>
         </section>
