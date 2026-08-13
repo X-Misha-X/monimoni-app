@@ -2212,6 +2212,12 @@ button {
   font-weight: 900;
 }
 
+.archive-gallery-empty {
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
 .archive-delete.large {
   margin-top: 0;
   font-size: 14px;

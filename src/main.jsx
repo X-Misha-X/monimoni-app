@@ -1096,6 +1096,7 @@ function Dashboard({
     setPaymentRequests((items) => items.filter((item) => item.monimonId !== monimon.id));
     setSelectedDebtIds([]);
     setSelectedMonimonId("personal");
+    setShowCreateMonimon(false);
     setEditingMonimonId(null);
     return true;
   }
@@ -1192,7 +1193,7 @@ function Dashboard({
                   <section className="glass-card panel">
                     <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} />
                     <h3 className="archive-gallery-title">Galería</h3>
-                    <EmptyState text="Todavía no hay elementos archivados." />
+                    <EmptyState className="archive-gallery-empty" text="Todavía no hay elementos archivados." />
                   </section>
                 )}
                 {activeView === "solicitudes" && (
@@ -1783,7 +1784,6 @@ function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, selecte
           title="Te deben"
           tone="positive"
           debts={preview ? incomingDebts.slice(0, 3) : incomingDebts}
-          selectable
           selectedDebtIds={selectedDebtIds}
           setSelectedDebtIds={setSelectedDebtIds}
           onEditDebt={onEditDebt}
@@ -2455,7 +2455,7 @@ function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onD
         </span>
         <span className="debt-line">
           <small className="counterparty-line">De <span>{counterparty.fromName}</span> para <span>{counterparty.toName}</span></small>
-          {splitAmount && <small className="debt-share"><span>TU PAGO</span> {money(splitAmount)}</small>}
+          {splitAmount && <small className="debt-share"><span>IMPORTE DIVIDIDO</span> {money(splitAmount)}</small>}
         </span>
       </span>
       <RowActions onEdit={onEditDebt ? () => onEditDebt(debt) : null} onDelete={onDeleteDebt ? () => onDeleteDebt(debt) : null} />
@@ -2490,8 +2490,8 @@ function Metric({ label, value, currency = "ARS", positive, negative }) {
   );
 }
 
-function EmptyState({ text }) {
-  return <div className="empty-state">{text}</div>;
+function EmptyState({ text, className = "" }) {
+  return <div className={`empty-state ${className}`.trim()}>{text}</div>;
 }
 
 function PanelTitle({ icon, title, action, onAction }) {
