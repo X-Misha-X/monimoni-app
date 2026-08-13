@@ -305,6 +305,14 @@ function debtShareFor(debt, memberId, members) {
   return debt.toMemberId === memberId ? debt.amount : 0;
 }
 
+function debtReceivableFor(debt, memberId, members) {
+  if (debt.fromMemberId !== memberId) return 0;
+  if (debt.kind !== "loan" && members.length > 1) {
+    return debt.amount - debt.amount / members.length;
+  }
+  return debt.amount;
+}
+
 function emptyCurrencyTotals() {
   return {
     ARS: { theyOwe: 0, iOwe: 0 },
@@ -1035,15 +1043,13 @@ function Dashboard({
   const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : [];
   const isMonimonMode = selectedMonimonId !== "personal";
   const shareUrl = `${window.location.origin}${window.location.pathname}#monimon=${selectedMonimonId}`;
-  const incomingDebts = openExpenses.filter((debt) => debt.fromMemberId === activeUser.id);
+  const incomingDebts = openExpenses.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const outgoingDebts = openExpenses.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
-  const incomingLoans = openLoans.filter((debt) => debt.fromMemberId === activeUser.id);
+  const incomingLoans = openLoans.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const outgoingLoans = openLoans.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const summaryByCurrency = [...incomingDebts, ...incomingLoans, ...outgoingDebts, ...outgoingLoans].reduce((totals, debt) => {
     if (debt.fromMemberId === activeUser.id) {
-      const amount = debt.kind !== "loan" && membersForSelectedMonimon.length > 1
-        ? debt.amount - debt.amount / (membersForSelectedMonimon.length || 1)
-        : debt.amount;
+      const amount = debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon);
       return addCurrencyTotal(totals, debt.currency, "theyOwe", amount);
     }
     const amount = debtShareFor(debt, activeUser.id, membersForSelectedMonimon);
@@ -1079,11 +1085,11 @@ function Dashboard({
   }
 
   function deleteMonimon(monimon) {
-    if (!monimon) return;
+    if (!monimon) return false;
     const confirmed = window.confirm(
       `Eliminar ${monimon.name}?\n\nSe eliminará por completo y no se puede recuperar. Sus gastos, pagos, solicitudes y registros se perderán para siempre.`
     );
-    if (!confirmed) return;
+    if (!confirmed) return false;
     replaceMonimons(monimons.filter((item) => item.id !== monimon.id));
     setDebts((items) => items.filter((item) => item.monimonId !== monimon.id));
     setPayments((items) => items.filter((item) => item.monimonId !== monimon.id));
@@ -1091,6 +1097,7 @@ function Dashboard({
     setSelectedDebtIds([]);
     setSelectedMonimonId("personal");
     setEditingMonimonId(null);
+    return true;
   }
 
   async function shareMonimon() {
@@ -1751,7 +1758,13 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
         </div>
         {isEditing && (
           <div className="delete-monimon-zone">
-            <button type="button" className="delete-monimon-btn" onClick={() => onDeleteMonimon?.(monimon)}>
+            <button
+              type="button"
+              className="delete-monimon-btn"
+              onClick={() => {
+                if (onDeleteMonimon?.(monimon)) onClose();
+              }}
+            >
               <Trash2 size={16} /> Eliminar Mon!
             </button>
           </div>
@@ -1761,7 +1774,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
   );
 }
 
-function DebtPanel({ appUsers, incomingDebts, outgoingDebts, selectedDebtIds, setSelectedDebtIds, isMonimonMode, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt }) {
+function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, selectedDebtIds, setSelectedDebtIds, isMonimonMode, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt }) {
   return (
     <section className="glass-card panel">
       <PanelTitle icon={<ListChecks size={18} />} title={title || (isMonimonMode ? "Gastos" : "Mis gastos")} action={preview ? null : action || "Nuevo gasto"} onAction={onNewDebt} />
@@ -1775,9 +1788,18 @@ function DebtPanel({ appUsers, incomingDebts, outgoingDebts, selectedDebtIds, se
           setSelectedDebtIds={setSelectedDebtIds}
           onEditDebt={onEditDebt}
           onDeleteDebt={onDeleteDebt}
+          amountForDebt={(debt) => debtReceivableFor(debt, activeUser.id, appUsers)}
           appUsers={appUsers}
         />
-        <DebtGroup title="Debes" tone="negative" debts={preview ? outgoingDebts.slice(0, 2) : outgoingDebts} onEditDebt={onEditDebt} onDeleteDebt={onDeleteDebt} appUsers={appUsers} />
+        <DebtGroup
+          title="Debes"
+          tone="negative"
+          debts={preview ? outgoingDebts.slice(0, 2) : outgoingDebts}
+          onEditDebt={onEditDebt}
+          onDeleteDebt={onDeleteDebt}
+          amountForDebt={(debt) => debtShareFor(debt, activeUser.id, appUsers)}
+          appUsers={appUsers}
+        />
       </div>
     </section>
   );
@@ -2387,8 +2409,8 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt }) {
-  const total = debts.reduce((sum, debt) => sum + debt.amount, 0);
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt }) {
+  const total = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
   return (
     <div>
       <div className="group-heading">
