@@ -1145,12 +1145,6 @@ function Dashboard({
                   theyOwe={theyOwe}
                   iOwe={iOwe}
                 />
-                {activeView === "resumen" && (
-                  <div className="overview-grid">
-                    <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} preview onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
-                    <PaymentsPanel payments={scopedPayments} compact onEditPayment={setEditingPayment} onDeletePayment={deletePayment} />
-                  </div>
-                )}
                 {activeView === "gastos" && (
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
@@ -2082,7 +2076,7 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
             />
           </div>
           {error && <p className="form-error payment-error">{error}</p>}
-          <button type="button" onClick={saveDebt} className="primary-action save-payment">Guardar gasto</button>
+          <button type="button" onClick={saveDebt} className="primary-action save-payment save-debt">Guardar gasto</button>
         </div>
       </div>
     </div>
