@@ -1605,6 +1605,51 @@ button {
   padding: 0 14px;
 }
 
+.contacts-modal {
+  width: min(820px, 100%);
+}
+
+.contacts-modal .modal-head h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contacts-search-form {
+  display: grid;
+  gap: 12px;
+}
+
+.contacts-search-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contacts-search-mode button {
+  min-height: 42px;
+  border: 1px solid rgba(236, 156, 157, 0.18);
+  border-radius: 8px;
+  background: rgba(33, 28, 26, 0.52);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.contacts-search-mode button,
+.contacts-search button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.contacts-search-mode button.active {
+  border-color: rgba(236, 156, 157, 0.45);
+  background: rgba(191, 115, 135, 0.2);
+  color: var(--rose);
+}
+
 .contacts-search input {
   width: 100%;
   border: 0;
@@ -1618,11 +1663,66 @@ button {
   color: #9d877c;
 }
 
+.contacts-search button {
+  width: 42px;
+  height: 36px;
+  border: 1px solid rgba(236, 156, 157, 0.28);
+  border-radius: 8px;
+  background: #bf7387;
+  color: #28100d;
+}
+
+.contact-search-result {
+  margin-top: 14px;
+}
+
+.contact-not-found {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(236, 156, 157, 0.22);
+  border-radius: 8px;
+  background: rgba(33, 28, 26, 0.52);
+  padding: 12px;
+}
+
+.contact-not-found b,
+.contact-not-found small {
+  display: block;
+}
+
+.contact-not-found b {
+  color: var(--milk);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.contact-not-found small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.contact-not-found button {
+  min-height: 38px;
+  border-radius: 8px;
+  background: #bf7387;
+  color: #28100d;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .contacts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-top: 16px;
+}
+
+.contacts-modal .contacts-grid {
+  grid-template-columns: 1fr;
 }
 
 .contacts-column {

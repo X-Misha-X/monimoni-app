@@ -18,6 +18,7 @@ import {
   ListChecks,
   LockKeyhole,
   LogOut,
+  Mail,
   Maximize2,
   PanelLeftClose,
   PanelLeftOpen,
@@ -25,6 +26,7 @@ import {
   Plus,
   ReceiptText,
   History,
+  Search,
   Share2,
   Settings,
   ShieldCheck,
@@ -83,7 +85,7 @@ const groupNavItems = [
   { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
-const validViewIds = new Set([...groupNavItems.map((item) => item.id), "contactos"]);
+const validViewIds = new Set(groupNavItems.map((item) => item.id));
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 function money(value, currency = "ARS") {
@@ -370,6 +372,10 @@ function contactKey(ownerProfileId, memberId) {
   return `${ownerProfileId}:${memberId}`;
 }
 
+function normalizedSearch(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 function addCurrencyTotal(totals, currency, field, amount) {
   const key = currency === "USD" ? "USD" : "ARS";
   return {
@@ -445,6 +451,7 @@ function App() {
   const [archiveFiles, setArchiveFiles] = useState([]);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null);
+  const [showContacts, setShowContacts] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const [sideNavCollapsed, setSideNavCollapsed] = useState(false);
@@ -1188,7 +1195,7 @@ function Dashboard({
           id: contactKey(activeUser.id, memberId),
           ownerProfileId: activeUser.id,
           memberId,
-          status: "active",
+          status: "pending",
           createdAt: new Date().toISOString()
         },
         ...items
@@ -1266,8 +1273,8 @@ function Dashboard({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              className={`header-contacts-btn ${activeView === "contactos" ? "active" : ""}`}
-              onClick={() => setActiveView("contactos")}
+              className={`header-contacts-btn ${showContacts ? "active" : ""}`}
+              onClick={() => setShowContacts(true)}
             >
               <BookUser size={18} /> Contactos
             </button>
@@ -1351,15 +1358,13 @@ function Dashboard({
             </div>
             <div className="dashboard-grid">
               <section className="main-column">
-                {activeView !== "contactos" && (
-                  <SummaryHeader
-                    activeUser={activeUser}
-                    otherUser={otherUser}
-                    theyOwe={theyOwe}
-                    iOwe={iOwe}
-                    summaryByCurrency={summaryByCurrency}
-                  />
-                )}
+                <SummaryHeader
+                  activeUser={activeUser}
+                  otherUser={otherUser}
+                  theyOwe={theyOwe}
+                  iOwe={iOwe}
+                  summaryByCurrency={summaryByCurrency}
+                />
                 {activeView === "gastos" && (
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
@@ -1373,15 +1378,6 @@ function Dashboard({
                     <h3 className="archive-gallery-title">Galería</h3>
                     <EmptyState className="archive-gallery-empty" text="Todavía no hay elementos archivados." />
                   </section>
-                )}
-                {activeView === "contactos" && (
-                  <ContactsPanel
-                    activeUser={activeUser}
-                    members={appUsers}
-                    contacts={contacts}
-                    onAddContact={addContact}
-                    onRemoveContact={removeContact}
-                  />
                 )}
                 {activeView === "solicitudes" && (
                   <section className="glass-card panel">
@@ -1431,6 +1427,18 @@ function Dashboard({
         </div>
       </div>
       <MobileNav activeView={activeView} setActiveView={setActiveView} items={currentNavItems} />
+      {showContacts && (
+        <div className="modal-layer">
+          <ContactsPanel
+            activeUser={activeUser}
+            members={appUsers}
+            contacts={contacts}
+            onAddContact={addContact}
+            onRemoveContact={removeContact}
+            onClose={() => setShowContacts(false)}
+          />
+        </div>
+      )}
       {showCreateMonimon && !editingMonimonId && (
         <CreateMonimonModal
           activeUser={activeUser}
@@ -2554,36 +2562,93 @@ function isRegisteredContactCandidate(member) {
   return member?.memberStatus !== "ghost" && Boolean(member?.email);
 }
 
-function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveContact }) {
+function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveContact, onClose }) {
   const [query, setQuery] = useState("");
+  const [searchMode, setSearchMode] = useState("email");
+  const [searchedQuery, setSearchedQuery] = useState("");
+  const [inviteCopied, setInviteCopied] = useState(false);
   const activeContacts = contacts.filter((contact) => contact.ownerProfileId === activeUser.id && contact.status !== "removed");
   const contactMemberIds = new Set(activeContacts.map((contact) => contact.memberId));
   const contactMembers = activeContacts
     .map((contact) => members.find((member) => member.id === contact.memberId))
     .filter(isRegisteredContactCandidate)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const normalizedQuery = query.trim().toLowerCase();
-  const availableMembers = members
-    .filter(isRegisteredContactCandidate)
-    .filter((member) => member.id !== activeUser.id && !contactMemberIds.has(member.id))
-    .filter((member) => {
-      const searchableName = (member.name || "").toLowerCase();
-      const searchableEmail = (member.email || "").toLowerCase();
-      return !normalizedQuery || searchableName.includes(normalizedQuery) || searchableEmail.includes(normalizedQuery);
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const normalizedQuery = normalizedSearch(searchedQuery);
+  const foundMember = normalizedQuery
+    ? members
+        .filter(isRegisteredContactCandidate)
+        .find((member) => {
+          if (member.id === activeUser.id || contactMemberIds.has(member.id)) return false;
+          const searchableName = normalizedSearch(member.name);
+          const searchableEmail = normalizedSearch(member.email);
+          return searchMode === "email" ? searchableEmail === normalizedQuery : searchableName === normalizedQuery;
+        })
+    : null;
+  const hasSearched = Boolean(searchedQuery);
+
+  function submitContactSearch(event) {
+    event.preventDefault();
+    setInviteCopied(false);
+    setSearchedQuery(query);
+  }
+
+  function sendContactRequest(memberId) {
+    onAddContact(memberId);
+    setQuery("");
+    setSearchedQuery("");
+  }
+
+  async function inviteToApp() {
+    const inviteText = `Sumate a MONI MON!: ${window.location.origin}${window.location.pathname}`;
+    setInviteCopied(false);
+    try {
+      await navigator.clipboard.writeText(inviteText);
+      setInviteCopied(true);
+    } catch {
+      window.prompt("Copiá esta invitación", inviteText);
+    }
+  }
 
   return (
-    <section className="glass-card panel contacts-panel">
-      <PanelTitle icon={<BookUser size={18} />} title="Contactos" />
-      <div className="contacts-search">
-        <UserRound size={18} />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar por Email o nombre de usuario"
-        />
+    <section className="create-modal contacts-modal" role="dialog" aria-modal="true" aria-labelledby="contacts-title">
+      <div className="modal-head">
+        <h2 id="contacts-title"><BookUser size={22} /> Contactos</h2>
+        <button type="button" onClick={onClose} aria-label="Cerrar contactos">Cerrar</button>
       </div>
+      <form className="contacts-search-form" onSubmit={submitContactSearch}>
+        <div className="contacts-search-mode" role="group" aria-label="Tipo de búsqueda">
+          <button type="button" className={searchMode === "email" ? "active" : ""} onClick={() => setSearchMode("email")}>
+            <Mail size={16} /> Email
+          </button>
+          <button type="button" className={searchMode === "username" ? "active" : ""} onClick={() => setSearchMode("username")}>
+            <UserRound size={16} /> Usuario
+          </button>
+        </div>
+        <div className="contacts-search">
+          <UserRound size={18} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={searchMode === "email" ? "Buscar por Email" : "Buscar por nombre de usuario"}
+          />
+          <button type="submit" aria-label="Buscar contacto"><Search size={18} /></button>
+        </div>
+      </form>
+      {hasSearched && (
+        <div className="contact-search-result">
+          {foundMember ? (
+            <ContactRow member={foundMember} actionLabel="Enviar solicitud" onAction={() => sendContactRequest(foundMember.id)} />
+          ) : (
+            <div className="contact-not-found">
+              <span>
+                <b>No encontramos ese usuario.</b>
+                <small>Podés invitarlo a crear una cuenta en MONI MON!.</small>
+              </span>
+              <button type="button" onClick={inviteToApp}>{inviteCopied ? "Invitación copiada" : "Invitar"}</button>
+            </div>
+          )}
+        </div>
+      )}
       <div className="contacts-grid">
         <section className="contacts-column">
           <div className="group-heading">
@@ -2593,25 +2658,17 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
           <div className="contacts-list">
             {contactMembers.length ? (
               contactMembers.map((member) => (
-                <ContactRow key={member.id} member={member} actionLabel="Quitar" actionClassName="danger" onAction={() => onRemoveContact(member.id)} />
+                <ContactRow
+                  key={member.id}
+                  member={member}
+                  status={activeContacts.find((contact) => contact.memberId === member.id)?.status}
+                  actionLabel="Quitar"
+                  actionClassName="danger"
+                  onAction={() => onRemoveContact(member.id)}
+                />
               ))
             ) : (
               <EmptyState text="Todavía no agregaste contactos." />
-            )}
-          </div>
-        </section>
-        <section className="contacts-column">
-          <div className="group-heading">
-            <span>Personas disponibles</span>
-            <b>{availableMembers.length}</b>
-          </div>
-          <div className="contacts-list">
-            {availableMembers.length ? (
-              availableMembers.map((member) => (
-                <ContactRow key={member.id} member={member} actionLabel="Agregar" onAction={() => onAddContact(member.id)} />
-              ))
-            ) : (
-              <EmptyState text="No hay personas para agregar." />
             )}
           </div>
         </section>
@@ -2620,14 +2677,15 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
   );
 }
 
-function ContactRow({ member, actionLabel, actionClassName = "", onAction }) {
+function ContactRow({ member, status = "active", actionLabel, actionClassName = "", onAction }) {
   const isGhost = member.memberStatus === "ghost";
+  const caption = status === "pending" ? "Solicitud enviada" : isGhost ? "Integrante no registrado" : member.email || "Usuario registrado";
   return (
     <div className="contact-row">
       <Avatar user={member} />
       <span>
         <b>{member.name}</b>
-        <small>{isGhost ? "Integrante no registrado" : member.email || "Usuario registrado"}</small>
+        <small>{caption}</small>
       </span>
       <button type="button" className={actionClassName} onClick={onAction}>{actionLabel}</button>
     </div>
