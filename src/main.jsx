@@ -1534,9 +1534,9 @@ function ArchivePanel({ files, setFiles }) {
         <span>Fotos de tickets, facturas o comprobantes.</span>
         <input type="file" accept="image/*" multiple onChange={(event) => addFiles(event.target.files)} />
       </label>
-      <div className="archive-grid">
-        {files.length ? (
-          files.map((file) => (
+      {files.length > 0 && (
+        <div className="archive-grid">
+          {files.map((file) => (
             <article key={file.id} className="archive-card">
               <button type="button" className="archive-open" onClick={() => setPreviewFile(file)} aria-label={`Abrir ${file.name}`}>
                 <img src={file.url} alt={file.name} />
@@ -1550,11 +1550,9 @@ function ArchivePanel({ files, setFiles }) {
                 <small>{file.createdAt} · {(file.size / 1024).toFixed(0)} KB</small>
               </div>
             </article>
-          ))
-        ) : (
-          <div className="empty-state archive-empty"><ImageIcon size={20} /> Todavía no hay imágenes archivadas.</div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
       {previewFile && (
         <ArchivePreviewModal
           file={previewFile}
