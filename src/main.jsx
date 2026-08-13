@@ -1040,6 +1040,7 @@ function Dashboard({
   const openLoans = openDebts.filter((debt) => debt.kind === "loan");
   const currentNavItems = selectedMonimonId === "personal" ? navItems : groupNavItems;
   const selectedMonimon = monimons.find((monimon) => monimon.id === selectedMonimonId);
+  const editingMonimon = editingMonimonId ? monimons.find((monimon) => monimon.id === editingMonimonId) : null;
   const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : [];
   const isMonimonMode = selectedMonimonId !== "personal";
   const shareUrl = `${window.location.origin}${window.location.pathname}#monimon=${selectedMonimonId}`;
@@ -1096,13 +1097,13 @@ function Dashboard({
       `Eliminar ${monimon.name}?\n\nSe eliminará por completo y no se puede recuperar. Sus gastos, pagos, solicitudes y registros se perderán para siempre.`
     );
     if (!confirmed) return false;
+    closeMonimonModals();
     replaceMonimons(monimons.filter((item) => item.id !== monimon.id));
     setDebts((items) => items.filter((item) => item.monimonId !== monimon.id));
     setPayments((items) => items.filter((item) => item.monimonId !== monimon.id));
     setPaymentRequests((items) => items.filter((item) => item.monimonId !== monimon.id));
     setSelectedDebtIds([]);
     setSelectedMonimonId("personal");
-    closeMonimonModals();
     return true;
   }
 
@@ -1277,12 +1278,12 @@ function Dashboard({
           onClose={closeMonimonModals}
         />
       )}
-      {editingMonimonId && (
+      {editingMonimon && (
         <CreateMonimonModal
           activeUser={activeUser}
           appUsers={appUsers}
           setMembers={setMembers}
-          monimon={monimons.find((item) => item.id === editingMonimonId)}
+          monimon={editingMonimon}
           monimons={monimons}
           replaceMonimons={replaceMonimons}
           setSelectedMonimonId={setSelectedMonimonId}

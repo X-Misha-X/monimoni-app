@@ -2003,7 +2003,7 @@ button {
   min-height: 132px;
   border: 1px solid rgba(236, 156, 157, 0.2);
   border-radius: 8px;
-  background: rgba(8, 7, 5, 0.32);
+  background: #1c2c31;
   padding: 12px;
   color: var(--milk);
   text-align: left;
@@ -2023,18 +2023,21 @@ button {
 }
 
 .payment-card-head > div {
-  display: grid;
+  display: contents;
   min-width: 0;
-  gap: 2px;
 }
 
 .payment-card-head b {
   color: var(--milk);
   font-size: 15px;
   font-weight: 900;
+  grid-column: 1 / -1;
+  margin-top: 12px;
+  padding-left: 32px;
 }
 
 .payment-card-head time {
+  margin-left: auto;
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -2048,7 +2051,7 @@ button {
 
 .payment-debt-card > strong span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
   margin-right: 6px;
   text-transform: uppercase;
 }
@@ -2057,7 +2060,7 @@ button {
   justify-self: start;
   border: 0;
   background: transparent;
-  color: var(--peach);
+  color: #a47f7f;
   padding: 2px 0;
   font-size: 13px;
   font-weight: 900;
