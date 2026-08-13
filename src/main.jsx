@@ -305,6 +305,24 @@ function debtShareFor(debt, memberId, members) {
   return debt.toMemberId === memberId ? debt.amount : 0;
 }
 
+function emptyCurrencyTotals() {
+  return {
+    ARS: { theyOwe: 0, iOwe: 0 },
+    USD: { theyOwe: 0, iOwe: 0 }
+  };
+}
+
+function addCurrencyTotal(totals, currency, field, amount) {
+  const key = currency === "USD" ? "USD" : "ARS";
+  return {
+    ...totals,
+    [key]: {
+      ...totals[key],
+      [field]: totals[key][field] + amount
+    }
+  };
+}
+
 function userName(memberId, members) {
   if (memberId === "group") return "GRUPO";
   return members.find((member) => member.id === memberId)?.name || memberId?.toUpperCase?.() || "Usuario";
@@ -1021,15 +1039,18 @@ function Dashboard({
   const outgoingDebts = openExpenses.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const incomingLoans = openLoans.filter((debt) => debt.fromMemberId === activeUser.id);
   const outgoingLoans = openLoans.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
-  const theyOwe = incomingDebts.reduce((sum, debt) => {
-    if (debt.kind !== "loan" && membersForSelectedMonimon.length > 1) {
-      const memberCount = membersForSelectedMonimon.length || 1;
-      return sum + debt.amount - debt.amount / memberCount;
+  const summaryByCurrency = [...incomingDebts, ...incomingLoans, ...outgoingDebts, ...outgoingLoans].reduce((totals, debt) => {
+    if (debt.fromMemberId === activeUser.id) {
+      const amount = debt.kind !== "loan" && membersForSelectedMonimon.length > 1
+        ? debt.amount - debt.amount / (membersForSelectedMonimon.length || 1)
+        : debt.amount;
+      return addCurrencyTotal(totals, debt.currency, "theyOwe", amount);
     }
-    return sum + debt.amount;
-  }, 0) + incomingLoans.reduce((sum, debt) => sum + debt.amount, 0);
-  const iOwe = outgoingDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0)
-    + outgoingLoans.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
+    const amount = debtShareFor(debt, activeUser.id, membersForSelectedMonimon);
+    return amount > 0 ? addCurrencyTotal(totals, debt.currency, "iOwe", amount) : totals;
+  }, emptyCurrencyTotals());
+  const theyOwe = summaryByCurrency.ARS.theyOwe;
+  const iOwe = summaryByCurrency.ARS.iOwe;
   const selectedDebts = outgoingDebts.filter((debt) => selectedDebtIds.includes(debt.id));
   const selectedTotal = selectedDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
   function saveEditedDebt({ id, title, amount, currency, date, fromMemberId, toMemberId, kind }) {
@@ -1151,6 +1172,7 @@ function Dashboard({
                   otherUser={otherUser}
                   theyOwe={theyOwe}
                   iOwe={iOwe}
+                  summaryByCurrency={summaryByCurrency}
                 />
                 {activeView === "gastos" && (
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
@@ -1300,7 +1322,7 @@ function Dashboard({
   );
 }
 
-function SummaryHeader({ theyOwe, iOwe }) {
+function SummaryHeader({ summaryByCurrency }) {
   return (
     <section className="summary-card">
       <div className="summary-top">
@@ -1308,11 +1330,19 @@ function SummaryHeader({ theyOwe, iOwe }) {
           <h1>Resumen</h1>
         </div>
       </div>
-      <div className="summary-metrics">
-        <Metric label="Saldo neto" value={theyOwe - iOwe} />
-        <Metric label="Te deben" value={theyOwe} positive />
-        <Metric label="Debes" value={iOwe} negative />
-      </div>
+      {["ARS", "USD"].map((currency) => {
+        const totals = summaryByCurrency[currency];
+        return (
+          <div className="summary-currency-group" key={currency}>
+            <span className="summary-currency-label">{currency}</span>
+            <div className="summary-metrics">
+              <Metric label="Saldo neto" value={totals.theyOwe - totals.iOwe} currency={currency} />
+              <Metric label="Te deben" value={totals.theyOwe} currency={currency} positive />
+              <Metric label="Debes" value={totals.iOwe} currency={currency} negative />
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -2435,11 +2465,11 @@ function RowActions({ onEdit, onDelete }) {
   );
 }
 
-function Metric({ label, value, positive, negative }) {
+function Metric({ label, value, currency = "ARS", positive, negative }) {
   return (
     <div className={`metric ${positive ? "positive" : ""} ${negative ? "negative" : ""}`}>
       <p>{label}</p>
-      <b>{money(value)}</b>
+      <b>{money(value, currency)}</b>
     </div>
   );
 }
