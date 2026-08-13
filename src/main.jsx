@@ -1153,7 +1153,15 @@ function Dashboard({
                     {monimons.map((monimon) => <option key={monimon.id} value={monimon.id}>{monimon.name}</option>)}
                   </select>
                   {selectedMonimon && (
-                    <button type="button" className="edit-monimon-btn" onClick={() => setEditingMonimonId(selectedMonimon.id)} aria-label="Configurar moni mon!">
+                    <button
+                      type="button"
+                      className="edit-monimon-btn"
+                      onClick={() => {
+                        setShowCreateMonimon(false);
+                        setEditingMonimonId(selectedMonimon.id);
+                      }}
+                      aria-label="Configurar moni mon!"
+                    >
                       <Settings size={16} />
                     </button>
                   )}
@@ -1170,7 +1178,16 @@ function Dashboard({
                 )}
               </div>
               <div className="workspace-actions">
-                <button type="button" className="create-monimon-btn" onClick={() => setShowCreateMonimon(true)}><Plus size={17} /> CREAR MON!</button>
+                <button
+                  type="button"
+                  className="create-monimon-btn"
+                  onClick={() => {
+                    setEditingMonimonId(null);
+                    setShowCreateMonimon(true);
+                  }}
+                >
+                  <Plus size={17} /> CREAR MON!
+                </button>
               </div>
             </div>
             <div className="dashboard-grid">
@@ -2013,15 +2030,11 @@ function PaymentPanel({
           </div>
         </div>
       )}
-      <DebtGroup
-        title="Pagos pendientes"
-        tone="positive"
+      <PaymentDebtCards
         debts={pendingDebts}
-        hideHeading
-        selectable
         selectedDebtIds={selectedDebtIds}
         setSelectedDebtIds={setSelectedDebtIds}
-        appUsers={monimonMemberOptions}
+        members={monimonMemberOptions}
       />
       {payments.length > 0 && <PaymentRows payments={payments} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} />}
       <div className="payment-total">
@@ -2029,6 +2042,53 @@ function PaymentPanel({
         <b>{money(paymentPreviewTotal, paymentCurrency)}</b>
       </div>
     </section>
+  );
+}
+
+function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members }) {
+  const [expandedDebtIds, setExpandedDebtIds] = useState([]);
+  return (
+    <div className="payment-card-grid">
+      {debts.length ? (
+        debts.map((debt) => {
+          const isSelected = selectedDebtIds.includes(debt.id);
+          const isExpanded = expandedDebtIds.includes(debt.id);
+          const counterparty = debtCounterpartyParts(debt, members);
+          const splitAmount = debt.kind !== "loan" && members.length > 1 ? debt.amount / members.length : debt.amount;
+          return (
+            <article
+              key={debt.id}
+              className={`payment-debt-card ${isSelected ? "selected" : ""}`}
+              onClick={() => setSelectedDebtIds((items) => toggle(items, debt.id))}
+            >
+              <div className="payment-card-head">
+                <span className={`check ${isSelected ? "active" : ""}`}>{isSelected && <Check size={13} />}</span>
+                <time>{debt.date}</time>
+              </div>
+              <b>{debt.title}</b>
+              <strong>Importe {money(splitAmount, debt.currency)}</strong>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpandedDebtIds((items) => toggle(items, debt.id));
+                }}
+              >
+                {isExpanded ? "- Detalles" : "+ Detalles"}
+              </button>
+              {isExpanded && (
+                <div className="payment-card-details">
+                  <span>Pagado por <b>{counterparty.fromName}</b></span>
+                  <span>Importe total <b>{money(debt.amount, debt.currency)}</b></span>
+                </div>
+              )}
+            </article>
+          );
+        })
+      ) : (
+        <EmptyState text="Todavía no hay pagos pendientes." />
+      )}
+    </div>
   );
 }
 
@@ -2410,16 +2470,14 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt, hideHeading }) {
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt }) {
   const total = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
   return (
     <div>
-      {!hideHeading && (
-        <div className="group-heading">
-          <span className={tone}>{title}</span>
-          <b className={tone}>{money(total)}</b>
-        </div>
-      )}
+      <div className="group-heading">
+        <span className={tone}>{title}</span>
+        <b className={tone}>{money(total)}</b>
+      </div>
       <div className="debt-list">
         {debts.length ? (
           debts.map((debt) => (
