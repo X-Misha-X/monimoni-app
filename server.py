@@ -43,6 +43,7 @@ EMPTY_STATE = {
     "debts": [],
     "payments": [],
     "paymentRequests": [],
+    "contacts": [],
 }
 
 
@@ -258,6 +259,7 @@ def put_state(state):
         "debts": state.get("debts") if isinstance(state.get("debts"), list) else [],
         "payments": state.get("payments") if isinstance(state.get("payments"), list) else [],
         "paymentRequests": state.get("paymentRequests") if isinstance(state.get("paymentRequests"), list) else [],
+        "contacts": state.get("contacts") if isinstance(state.get("contacts"), list) else [],
     }
     validate_state(clean_state)
     payload = {"key": STATE_KEY, "data": clean_state}

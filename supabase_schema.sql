@@ -100,6 +100,29 @@ create table if not exists public.payments (
   foreign key (monimon_id, to_member_id) references public.monimon_members(monimon_id, member_id)
 );
 
+create table if not exists public.contacts (
+  id uuid primary key default gen_random_uuid(),
+  owner_profile_id uuid not null references public.profiles(id) on delete cascade,
+  member_id uuid not null references public.members(id) on delete cascade,
+  nickname text,
+  status text not null default 'active' check (status in ('active', 'pending', 'blocked', 'removed')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (owner_profile_id, member_id)
+);
+
+create table if not exists public.contact_requests (
+  id uuid primary key default gen_random_uuid(),
+  from_profile_id uuid not null references public.profiles(id) on delete cascade,
+  to_profile_id uuid references public.profiles(id) on delete cascade,
+  to_email text,
+  ghost_member_id uuid references public.members(id) on delete set null,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'expired')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (to_profile_id is not null or to_email is not null or ghost_member_id is not null)
+);
+
 create table if not exists public.monimon_state (
   key text primary key,
   data jsonb not null default '{}'::jsonb,
@@ -137,6 +160,12 @@ create trigger payment_requests_updated_at before update on public.payment_reque
 drop trigger if exists payments_updated_at on public.payments;
 create trigger payments_updated_at before update on public.payments for each row execute function public.set_updated_at();
 
+drop trigger if exists contacts_updated_at on public.contacts;
+create trigger contacts_updated_at before update on public.contacts for each row execute function public.set_updated_at();
+
+drop trigger if exists contact_requests_updated_at on public.contact_requests;
+create trigger contact_requests_updated_at before update on public.contact_requests for each row execute function public.set_updated_at();
+
 drop trigger if exists monimon_state_updated_at on public.monimon_state;
 create trigger monimon_state_updated_at before update on public.monimon_state for each row execute function public.set_updated_at();
 
@@ -148,4 +177,6 @@ alter table public.debts enable row level security;
 alter table public.payment_requests enable row level security;
 alter table public.payment_request_approvals enable row level security;
 alter table public.payments enable row level security;
+alter table public.contacts enable row level security;
+alter table public.contact_requests enable row level security;
 alter table public.monimon_state enable row level security;

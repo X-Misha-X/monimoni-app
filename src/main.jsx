@@ -4,6 +4,7 @@ import {
   Archive,
   ArrowLeftRight,
   Bell,
+  BookUser,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -60,6 +61,8 @@ const initialPayments = [];
 
 const initialPaymentRequests = [];
 
+const initialContacts = [];
+
 const navItems = [
   { id: "resumen", label: "Resumen", icon: Home },
   { id: "gastos", label: "Gastos", icon: ListChecks },
@@ -67,6 +70,7 @@ const navItems = [
   { id: "prestamos", label: "Préstamos", icon: FileText },
   { id: "pagos", label: "Historial", icon: History },
   { id: "archivo", label: "Archivo", icon: Archive },
+  { id: "contactos", label: "Contactos", icon: BookUser },
   { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
@@ -77,6 +81,7 @@ const groupNavItems = [
   { id: "prestamos", label: "Préstamos", icon: FileText },
   { id: "pagos", label: "Historial", icon: History },
   { id: "archivo", label: "Archivo", icon: Archive },
+  { id: "contactos", label: "Contactos", icon: BookUser },
   { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
@@ -278,6 +283,21 @@ function normalizeMonimonMembers(items) {
     : [];
 }
 
+function normalizeContacts(items) {
+  return Array.isArray(items)
+    ? items
+        .filter((item) => item && item.ownerProfileId && item.memberId)
+        .map((item) => ({
+          id: item.id || contactKey(item.ownerProfileId, item.memberId),
+          ownerProfileId: item.ownerProfileId,
+          memberId: item.memberId,
+          nickname: item.nickname || "",
+          status: item.status || "active",
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
+    : [];
+}
+
 function normalizeProfiles(items) {
   return Array.isArray(items)
     ? items
@@ -318,6 +338,10 @@ function emptyCurrencyTotals() {
     ARS: { theyOwe: 0, iOwe: 0 },
     USD: { theyOwe: 0, iOwe: 0 }
   };
+}
+
+function contactKey(ownerProfileId, memberId) {
+  return `${ownerProfileId}:${memberId}`;
 }
 
 function addCurrencyTotal(totals, currency, field, amount) {
@@ -383,6 +407,7 @@ function App() {
   const [debts, setDebts] = useState(() => normalizeDebts(readStored("monimon:debts", initialDebts)));
   const [payments, setPayments] = useState(() => normalizePayments(readStored("monimon:payments", initialPayments)));
   const [paymentRequests, setPaymentRequests] = useState(() => normalizePaymentRequests(readStored("monimon:paymentRequests", initialPaymentRequests)));
+  const [contacts, setContacts] = useState(() => normalizeContacts(readStored("monimon:contacts", initialContacts)));
   const [selectedDebtIds, setSelectedDebtIds] = useState([]);
   const [manualAmount, setManualAmount] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState("ARS");
@@ -463,6 +488,7 @@ function App() {
         if (Array.isArray(state.debts) && state.debts.length) setDebts(normalizeDebts(state.debts));
         if (Array.isArray(state.payments) && state.payments.length) setPayments(normalizePayments(state.payments));
         if (Array.isArray(state.paymentRequests) && state.paymentRequests.length) setPaymentRequests(normalizePaymentRequests(state.paymentRequests));
+        if (Array.isArray(state.contacts)) setContacts(normalizeContacts(state.contacts));
         backendLoaded.current = true;
         setBackendOnline(true);
       })
@@ -481,11 +507,11 @@ function App() {
       apiRequest("/api/state", {
         method: "PUT",
         headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
-        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests })
+        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts })
       }).catch(() => setBackendOnline(false));
     }, 350);
     return () => window.clearTimeout(timeoutId);
-  }, [backendOnline, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests]);
+  }, [backendOnline, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts]);
 
   useEffect(() => localStorage.setItem("monimon:profiles", JSON.stringify(appUsers)), [appUsers]);
   useEffect(() => localStorage.setItem("monimon:members", JSON.stringify(members)), [members]);
@@ -517,6 +543,7 @@ function App() {
   useEffect(() => localStorage.setItem("monimon:debts", JSON.stringify(debts)), [debts]);
   useEffect(() => localStorage.setItem("monimon:payments", JSON.stringify(payments)), [payments]);
   useEffect(() => localStorage.setItem("monimon:paymentRequests", JSON.stringify(paymentRequests)), [paymentRequests]);
+  useEffect(() => localStorage.setItem("monimon:contacts", JSON.stringify(contacts)), [contacts]);
   useEffect(() => localStorage.setItem("monimon:selectedMonimonId", JSON.stringify(selectedMonimonId)), [selectedMonimonId]);
   useEffect(() => localStorage.setItem("monimon:personalSpaceName", JSON.stringify(personalSpaceName)), [personalSpaceName]);
   useEffect(() => {
@@ -837,6 +864,8 @@ function App() {
       payments={payments}
       setPayments={setPayments}
       paymentRequests={paymentRequests}
+      contacts={contacts}
+      setContacts={setContacts}
       approvePaymentRequest={approvePaymentRequest}
       rejectPaymentRequest={rejectPaymentRequest}
       selectedDebtIds={selectedDebtIds}
@@ -1039,6 +1068,8 @@ function Dashboard({
   payments,
   setPayments,
   paymentRequests,
+  contacts,
+  setContacts,
   approvePaymentRequest,
   rejectPaymentRequest,
   selectedDebtIds,
@@ -1117,6 +1148,33 @@ function Dashboard({
   function closeMonimonModals() {
     setEditingMonimonId(null);
     setShowCreateMonimon(false);
+  }
+
+  function addContact(memberId) {
+    if (!activeUser || !memberId || memberId === activeUser.id) return;
+    setContacts((items) => {
+      const exists = items.some((item) => item.ownerProfileId === activeUser.id && item.memberId === memberId && item.status !== "removed");
+      if (exists) return items;
+      return [
+        {
+          id: contactKey(activeUser.id, memberId),
+          ownerProfileId: activeUser.id,
+          memberId,
+          status: "active",
+          createdAt: new Date().toISOString()
+        },
+        ...items
+      ];
+    });
+  }
+
+  function removeContact(memberId) {
+    if (!activeUser || !memberId) return;
+    setContacts((items) => items.map((item) => (
+      item.ownerProfileId === activeUser.id && item.memberId === memberId
+        ? { ...item, status: "removed" }
+        : item
+    )));
   }
 
   function saveEditedDebt({ id, title, amount, currency, date, fromMemberId, toMemberId, kind }) {
@@ -1271,6 +1329,15 @@ function Dashboard({
                     <h3 className="archive-gallery-title">Galería</h3>
                     <EmptyState className="archive-gallery-empty" text="Todavía no hay elementos archivados." />
                   </section>
+                )}
+                {activeView === "contactos" && (
+                  <ContactsPanel
+                    activeUser={activeUser}
+                    members={memberOptions}
+                    contacts={contacts}
+                    onAddContact={addContact}
+                    onRemoveContact={removeContact}
+                  />
                 )}
                 {activeView === "solicitudes" && (
                   <section className="glass-card panel">
@@ -2399,6 +2466,81 @@ function PaymentsPanel({ payments, compact, onEditPayment, onDeletePayment }) {
       <PanelTitle icon={<History size={18} />} title="Movimientos" />
       <PaymentRows payments={payments} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} />
     </section>
+  );
+}
+
+function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveContact }) {
+  const [query, setQuery] = useState("");
+  const activeContacts = contacts.filter((contact) => contact.ownerProfileId === activeUser.id && contact.status !== "removed");
+  const contactMemberIds = new Set(activeContacts.map((contact) => contact.memberId));
+  const contactMembers = activeContacts
+    .map((contact) => members.find((member) => member.id === contact.memberId))
+    .filter(Boolean)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const normalizedQuery = query.trim().toLowerCase();
+  const availableMembers = members
+    .filter((member) => member.id !== activeUser.id && !contactMemberIds.has(member.id))
+    .filter((member) => !normalizedQuery || member.name.toLowerCase().includes(normalizedQuery) || member.email?.toLowerCase?.().includes(normalizedQuery))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <section className="glass-card panel contacts-panel">
+      <PanelTitle icon={<BookUser size={18} />} title="Contactos" />
+      <div className="contacts-search">
+        <UserRound size={18} />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Buscar por nombre o email"
+        />
+      </div>
+      <div className="contacts-grid">
+        <section className="contacts-column">
+          <div className="group-heading">
+            <span>Tu agenda</span>
+            <b>{contactMembers.length}</b>
+          </div>
+          <div className="contacts-list">
+            {contactMembers.length ? (
+              contactMembers.map((member) => (
+                <ContactRow key={member.id} member={member} actionLabel="Quitar" actionClassName="danger" onAction={() => onRemoveContact(member.id)} />
+              ))
+            ) : (
+              <EmptyState text="Todavía no agregaste contactos." />
+            )}
+          </div>
+        </section>
+        <section className="contacts-column">
+          <div className="group-heading">
+            <span>Personas disponibles</span>
+            <b>{availableMembers.length}</b>
+          </div>
+          <div className="contacts-list">
+            {availableMembers.length ? (
+              availableMembers.map((member) => (
+                <ContactRow key={member.id} member={member} actionLabel="Agregar" onAction={() => onAddContact(member.id)} />
+              ))
+            ) : (
+              <EmptyState text="No hay personas para agregar." />
+            )}
+          </div>
+        </section>
+      </div>
+    </section>
+  );
+}
+
+function ContactRow({ member, actionLabel, actionClassName = "", onAction }) {
+  const isGhost = member.memberStatus === "ghost";
+  return (
+    <div className="contact-row">
+      <Avatar user={member} />
+      <span>
+        <b>{member.name}</b>
+        <small>{isGhost ? "Integrante no registrado" : member.email || "Usuario registrado"}</small>
+      </span>
+      <button type="button" className={actionClassName} onClick={onAction}>{actionLabel}</button>
+    </div>
   );
 }
 

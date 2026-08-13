@@ -1568,6 +1568,95 @@ button {
   transform: translateY(-1px);
 }
 
+.contacts-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  border: 1px solid rgba(236, 156, 157, 0.24);
+  border-radius: 8px;
+  background: rgba(8, 7, 5, 0.42);
+  color: var(--rose);
+  padding: 0 14px;
+}
+
+.contacts-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--milk);
+  font-weight: 800;
+}
+
+.contacts-search input::placeholder {
+  color: #9d877c;
+}
+
+.contacts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.contacts-column {
+  min-width: 0;
+}
+
+.contacts-list {
+  display: grid;
+  gap: 10px;
+}
+
+.contact-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  border: 1px solid rgba(236, 156, 157, 0.22);
+  border-radius: 8px;
+  background: rgba(33, 28, 26, 0.52);
+  padding: 10px;
+}
+
+.contact-row b,
+.contact-row small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-row b {
+  color: var(--milk);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.contact-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.contact-row button {
+  min-height: 36px;
+  border: 1px solid rgba(236, 156, 157, 0.24);
+  border-radius: 8px;
+  background: rgba(236, 156, 157, 0.16);
+  color: var(--rose);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.contact-row button.danger {
+  color: var(--red);
+  background: rgba(255, 126, 134, 0.08);
+}
+
 .split-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2486,8 +2575,13 @@ button {
 
   .app-layout,
   .dashboard-grid,
-  .overview-grid {
+  .overview-grid,
+  .contacts-grid {
     display: block;
+  }
+
+  .contacts-column + .contacts-column {
+    margin-top: 14px;
   }
 
   .workspace-bar {
