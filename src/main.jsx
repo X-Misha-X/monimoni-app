@@ -291,6 +291,11 @@ function normalizeProfiles(items) {
 }
 
 function debtShareFor(debt, memberId, members) {
+  if (members.length > 1) {
+    const participantIds = members.map((member) => member.id);
+    if (!participantIds.includes(memberId) || debt.fromMemberId === memberId) return 0;
+    return debt.amount / participantIds.length;
+  }
   if (debt.toMemberId === "group") {
     const participantIds = members.length ? members.map((member) => member.id) : [];
     if (!participantIds.includes(memberId) || debt.fromMemberId === memberId) return 0;
@@ -1011,7 +1016,7 @@ function Dashboard({
   const incomingDebts = openDebts.filter((debt) => debt.fromMemberId === activeUser.id);
   const outgoingDebts = openDebts.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const theyOwe = incomingDebts.reduce((sum, debt) => {
-    if (debt.toMemberId === "group") {
+    if (membersForSelectedMonimon.length > 1) {
       const memberCount = membersForSelectedMonimon.length || 1;
       return sum + debt.amount - debt.amount / memberCount;
     }
@@ -2380,7 +2385,7 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
 
 function DebtRow({ debt, selectable, checked, onToggle, members }) {
   const counterparty = debtCounterpartyParts(debt, members);
-  const splitAmount = debt.toMemberId === "group" && members.length ? debt.amount / members.length : null;
+  const splitAmount = members.length > 1 ? debt.amount / members.length : null;
   return (
     <div role={selectable ? "button" : undefined} tabIndex={selectable ? 0 : undefined} onClick={onToggle} className="debt-row">
       <span className="min-w-0 flex-1">
