@@ -1983,12 +1983,16 @@ button {
 }
 
 .payment-total {
-  margin-top: 16px;
+  width: fit-content;
+  margin-top: 18px;
+  border-radius: 8px;
+  background: rgba(199, 112, 145, 0.16);
+  padding: 12px 16px;
 }
 
 .payment-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 320px));
+  grid-template-columns: repeat(auto-fit, 220px);
   gap: 12px;
 }
 
@@ -2101,9 +2105,9 @@ button {
 
 .payment-total b {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--sakura);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 900;
 }
 

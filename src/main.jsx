@@ -1059,6 +1059,12 @@ function Dashboard({
   const iOwe = summaryByCurrency.ARS.iOwe;
   const selectedDebts = outgoingDebts.filter((debt) => selectedDebtIds.includes(debt.id));
   const selectedTotal = selectedDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
+
+  function closeMonimonModals() {
+    setEditingMonimonId(null);
+    setShowCreateMonimon(false);
+  }
+
   function saveEditedDebt({ id, title, amount, currency, date, fromMemberId, toMemberId, kind }) {
     const parsedAmount = parseAmountInput(amount);
     if (!title.trim() || parsedAmount <= 0) return;
@@ -1096,8 +1102,7 @@ function Dashboard({
     setPaymentRequests((items) => items.filter((item) => item.monimonId !== monimon.id));
     setSelectedDebtIds([]);
     setSelectedMonimonId("personal");
-    setShowCreateMonimon(false);
-    setEditingMonimonId(null);
+    closeMonimonModals();
     return true;
   }
 
@@ -1269,7 +1274,7 @@ function Dashboard({
           monimons={monimons}
           replaceMonimons={replaceMonimons}
           setSelectedMonimonId={setSelectedMonimonId}
-          onClose={() => setShowCreateMonimon(false)}
+          onClose={closeMonimonModals}
         />
       )}
       {editingMonimonId && (
@@ -1282,7 +1287,7 @@ function Dashboard({
           replaceMonimons={replaceMonimons}
           setSelectedMonimonId={setSelectedMonimonId}
           onDeleteMonimon={deleteMonimon}
-          onClose={() => setEditingMonimonId(null)}
+          onClose={closeMonimonModals}
         />
       )}
       {editingDebt && (
@@ -1780,7 +1785,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
               type="button"
               className="delete-monimon-btn"
               onClick={() => {
-                if (onDeleteMonimon?.(monimon)) onClose();
+                onDeleteMonimon?.(monimon);
               }}
             >
               <Trash2 size={16} /> Eliminar Mon!
@@ -2064,8 +2069,8 @@ function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members 
               <div className="payment-card-head">
                 <span className={`check ${isSelected ? "active" : ""}`}>{isSelected && <Check size={13} />}</span>
                 <div>
-                  <b>{debt.title}</b>
                   <time>{debt.date}</time>
+                  <b>{debt.title}</b>
                 </div>
               </div>
               <strong><span>Importe</span> {money(splitAmount, debt.currency)}</strong>
