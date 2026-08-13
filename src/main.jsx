@@ -373,6 +373,7 @@ function App() {
   const [monimonMembers, setMonimonMembers] = useState(() => normalizeMonimonMembers(readStored("monimon:monimonMembers", initialMonimonMembers)));
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
   const [authName, setAuthName] = useState("");
   const [authMode, setAuthMode] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
@@ -579,6 +580,10 @@ function App() {
   async function submitLogin(event) {
     event.preventDefault();
     setError("");
+    if (authMode === "register" && authPassword !== authPasswordConfirm) {
+      setError("Las contraseñas no coinciden.");
+      return;
+    }
     setAuthLoading(true);
     try {
       const payload = await apiRequest(authMode === "login" ? "/api/auth/login" : "/api/auth/signup", {
@@ -634,6 +639,7 @@ function App() {
   function clearAuthSession() {
     setSession(null);
     setAuthPassword("");
+    setAuthPasswordConfirm("");
     setAuthEmail("");
     setAuthName("");
     setAuthMode("login");
@@ -787,6 +793,8 @@ function App() {
             setAuthEmail={setAuthEmail}
             authPassword={authPassword}
             setAuthPassword={setAuthPassword}
+            authPasswordConfirm={authPasswordConfirm}
+            setAuthPasswordConfirm={setAuthPasswordConfirm}
             authName={authName}
             setAuthName={setAuthName}
             authMode={authMode}
@@ -883,6 +891,8 @@ function LoginCard({
   setAuthEmail,
   authPassword,
   setAuthPassword,
+  authPasswordConfirm,
+  setAuthPasswordConfirm,
   authName,
   setAuthName,
   authMode,
@@ -897,34 +907,33 @@ function LoginCard({
   const isRegister = authMode === "register";
   return (
     <div className="login-panel">
-      <div className="card-heading login-heading">
-        <h2>{isRegister ? "Crear cuenta" : "Ingresa a tu cuenta"}</h2>
-      </div>
-
       <form onSubmit={submitLogin} className="glass-card login-card">
         <img src="/moni-logo-cropped.png" alt="moni mon!" className="login-card-logo" />
 
-        <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
-          <GoogleMark /> <span>Continuar con Google</span>
-        </button>
-
-        <div className="auth-divider">
-          <span>O ingresá con email</span>
-        </div>
-
-        {isRegister && (
+        {!isRegister && (
           <>
-            <label className="field-label" htmlFor="auth-name">Nombre</label>
-            <div className="pin-field auth-field">
-              <input
-                id="auth-name"
-                value={authName}
-                onChange={(event) => setAuthName(event.target.value.slice(0, 40))}
-                autoComplete="name"
-                placeholder="Tu nombre"
-              />
+            <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
+              <GoogleMark /> <span>Continuar con Google</span>
+            </button>
+
+            <div className="auth-divider">
+              <span>O ingresá con Usuario o Email</span>
             </div>
           </>
+        )}
+
+        {isRegister && (
+          <div className="pin-field auth-field login-input-field">
+            <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
+            <input
+              id="auth-name"
+              aria-label="Nombre de usuario"
+              value={authName}
+              onChange={(event) => setAuthName(event.target.value.slice(0, 40))}
+              autoComplete="name"
+              placeholder="Nombre de usuario"
+            />
+          </div>
         )}
 
         <div className="pin-field auth-field login-input-field">
@@ -937,7 +946,7 @@ function LoginCard({
             autoComplete="email"
             inputMode="email"
             type="email"
-            placeholder="Usuario o Email"
+            placeholder={isRegister ? "Email" : "Usuario o Email"}
             required
           />
         </div>
@@ -960,6 +969,23 @@ function LoginCard({
           </button>
         </div>
 
+        {isRegister && (
+          <div className="pin-field login-input-field">
+            <span className="field-icon" aria-hidden="true"><LockKeyhole size={18} /></span>
+            <input
+              id="auth-password-confirm"
+              aria-label="Repetir contraseña"
+              value={authPasswordConfirm}
+              onChange={(event) => setAuthPasswordConfirm(event.target.value)}
+              autoComplete="new-password"
+              type={showPassword ? "text" : "password"}
+              placeholder="Repetir contraseña"
+              minLength={6}
+              required
+            />
+          </div>
+        )}
+
         {!isRegister && (
           <div className="auth-options-row">
             <label className="remember-session">
@@ -976,7 +1002,13 @@ function LoginCard({
         </button>
         <p className="auth-switch-copy">
           {isRegister ? "Ya tenés cuenta?" : "Nuevo en MONI MON!?"}{" "}
-          <button type="button" onClick={() => setAuthMode(isRegister ? "login" : "register")}>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthPasswordConfirm("");
+              setAuthMode(isRegister ? "login" : "register");
+            }}
+          >
             {isRegister ? "Ingresá" : "Crea una cuenta"}
           </button>
         </p>
