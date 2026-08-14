@@ -20,6 +20,7 @@ import {
   LogOut,
   Mail,
   Maximize2,
+  MapPin,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -64,6 +65,24 @@ const initialPayments = [];
 const initialPaymentRequests = [];
 
 const initialContacts = [];
+
+function buildCountryOptions() {
+  if (!("Intl" in window) || typeof Intl.DisplayNames !== "function") return [];
+  const regionNames = new Intl.DisplayNames(["es"], { type: "region" });
+  const codes = [];
+  for (let first = 65; first <= 90; first += 1) {
+    for (let second = 65; second <= 90; second += 1) {
+      const code = String.fromCharCode(first, second);
+      const name = regionNames.of(code);
+      if (name && name !== code) {
+        codes.push({ code, name });
+      }
+    }
+  }
+  return codes.sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
+const countryOptions = buildCountryOptions();
 
 const navItems = [
   { id: "resumen", label: "Resumen", icon: Home },
@@ -140,15 +159,6 @@ function shiftMonth(isoMonth, offset) {
   return date.toISOString().slice(0, 7);
 }
 
-function readStored(key, fallback) {
-  try {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -164,16 +174,50 @@ async function apiRequest(path, options = {}) {
   return payload;
 }
 
-function readStoredSession() {
-  return readStored("monimon:authSession", null);
+function normalizeUsername(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._]/g, "")
+    .replace(/[.]{2,}/g, ".")
+    .replace(/^[._]+|[._]+$/g, "")
+    .slice(0, 24);
+}
+
+function usernameFromEmail(email = "") {
+  return normalizeUsername(String(email).split("@")[0] || "");
+}
+
+function usernameFromProfile(profile = {}) {
+  return normalizeUsername(profile.username || profile.userName || profile.email || profile.name || "");
+}
+
+function makeUniqueUsername(seed, usedUsernames) {
+  const base = normalizeUsername(seed) || "usuario";
+  let candidate = base;
+  let suffix = 2;
+  while (usedUsernames.has(candidate)) {
+    candidate = normalizeUsername(`${base}.${suffix}`);
+    suffix += 1;
+  }
+  usedUsernames.add(candidate);
+  return candidate;
+}
+
+function displayHandle(username) {
+  const cleanUsername = normalizeUsername(username);
+  return cleanUsername ? `@${cleanUsername}` : "";
 }
 
 function profileFromAuthUser(user) {
   const metadata = user?.user_metadata || {};
   const displayName = metadata.display_name || metadata.full_name || metadata.name || user?.email?.split("@")[0] || "Usuario";
+  const username = normalizeUsername(metadata.username || metadata.user_name || metadata.preferred_username || usernameFromEmail(user?.email) || displayName);
   return {
     id: user.id,
     name: displayName.toUpperCase(),
+    username,
     email: user.email || "",
     role: user.app_metadata?.role || user.user_metadata?.role || "user",
     avatarSrc: metadata.avatar_url || avatarOptions[0].src,
@@ -214,6 +258,8 @@ function memberFromProfile(profile) {
     id: profile.id,
     profileId: profile.id,
     displayName: profile.name || profile.email || "USER",
+    username: profile.username || usernameFromProfile(profile),
+    email: profile.email || "",
     status: "active"
   };
 }
@@ -290,6 +336,8 @@ function normalizeMembers(items) {
         .map((item) => ({
           ...item,
           displayName: item.displayName || item.name || "USER",
+          username: item.username || usernameFromProfile(item),
+          email: item.email || "",
           status: item.status || "active"
         }))
     : [];
@@ -327,16 +375,21 @@ function normalizeContacts(items) {
 }
 
 function normalizeProfiles(items) {
-  return Array.isArray(items)
-    ? items
-        .filter((item) => item && item.id)
-        .map((item) => ({
-          ...avatarCrop,
-          ...item,
-          name: item.name || item.email?.split("@")[0]?.toUpperCase?.() || "USUARIO",
-          avatarSrc: item.avatarSrc || avatarOptions[0].src
-        }))
-    : [];
+  if (!Array.isArray(items)) return [];
+  const usedUsernames = new Set();
+  return items
+    .filter((item) => item && item.id)
+    .map((item) => {
+      const username = makeUniqueUsername(item.username || item.userName || usernameFromEmail(item.email) || item.name, usedUsernames);
+      const name = item.name || item.displayName || item.email?.split("@")[0]?.toUpperCase?.() || username.toUpperCase() || "USUARIO";
+      return {
+        ...avatarCrop,
+        ...item,
+        name: String(name).toUpperCase(),
+        username,
+        avatarSrc: item.avatarSrc || avatarOptions[0].src
+      };
+    });
 }
 
 function debtShareFor(debt, memberId, members) {
@@ -361,11 +414,54 @@ function debtReceivableFor(debt, memberId, members) {
   return debt.amount;
 }
 
+function expenseParticipantIds(debt, members) {
+  const memberIds = members.map((member) => member.id).filter(Boolean);
+  if (memberIds.length) return memberIds;
+  return [debt.fromMemberId, debt.toMemberId].filter((id) => id && id !== "group");
+}
+
+function expenseNetFor(debt, memberId, members) {
+  if (debt.kind === "loan") return 0;
+  const participantIds = expenseParticipantIds(debt, members);
+  if (!participantIds.includes(memberId) || !participantIds.length) return 0;
+  const paid = debt.fromMemberId === memberId ? debt.amount : 0;
+  return paid - (debt.amount / participantIds.length);
+}
+
 function emptyCurrencyTotals() {
   return {
     ARS: { theyOwe: 0, iOwe: 0 },
     USD: { theyOwe: 0, iOwe: 0 }
   };
+}
+
+function emptyCurrencyBalances() {
+  return {
+    ARS: 0,
+    USD: 0
+  };
+}
+
+function addCurrencyBalance(balances, currency, amount) {
+  const key = currency === "USD" ? "USD" : "ARS";
+  return {
+    ...balances,
+    [key]: balances[key] + amount
+  };
+}
+
+function globalExpenseTotalsFor(expenses, memberId, members) {
+  const balances = expenses.reduce((totals, debt) => (
+    addCurrencyBalance(totals, debt.currency, expenseNetFor(debt, memberId, members))
+  ), emptyCurrencyBalances());
+
+  return Object.entries(balances).reduce((totals, [currency, balance]) => ({
+    ...totals,
+    [currency]: {
+      theyOwe: Math.max(balance, 0),
+      iOwe: Math.max(-balance, 0)
+    }
+  }), emptyCurrencyTotals());
 }
 
 function contactKey(ownerProfileId, memberId) {
@@ -422,24 +518,25 @@ function calendarDays(isoMonth) {
 }
 
 function App() {
-  const [session, setSession] = useState(() => readStoredSession());
-  const [appUsers, setAppUsers] = useState(() => normalizeProfiles(readStored("monimon:profiles", initialProfiles)));
-  const [members, setMembers] = useState(() => normalizeMembers(readStored("monimon:members", initialMembers)));
-  const [monimons, setMonimons] = useState(() => normalizeMonimons(readStored("monimon:monimons", initialMonimons)));
-  const [monimonMembers, setMonimonMembers] = useState(() => normalizeMonimonMembers(readStored("monimon:monimonMembers", initialMonimonMembers)));
+  const [session, setSession] = useState(null);
+  const [appUsers, setAppUsers] = useState(() => normalizeProfiles(initialProfiles));
+  const [members, setMembers] = useState(() => normalizeMembers(initialMembers));
+  const [monimons, setMonimons] = useState(() => normalizeMonimons(initialMonimons));
+  const [monimonMembers, setMonimonMembers] = useState(() => normalizeMonimonMembers(initialMonimonMembers));
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
   const [authName, setAuthName] = useState("");
+  const [authCountry, setAuthCountry] = useState("");
   const [authMode, setAuthMode] = useState("login");
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState("resumen");
-  const [debts, setDebts] = useState(() => normalizeDebts(readStored("monimon:debts", initialDebts)));
-  const [payments, setPayments] = useState(() => normalizePayments(readStored("monimon:payments", initialPayments)));
-  const [paymentRequests, setPaymentRequests] = useState(() => normalizePaymentRequests(readStored("monimon:paymentRequests", initialPaymentRequests)));
-  const [contacts, setContacts] = useState(() => normalizeContacts(readStored("monimon:contacts", initialContacts)));
+  const [debts, setDebts] = useState(() => normalizeDebts(initialDebts));
+  const [payments, setPayments] = useState(() => normalizePayments(initialPayments));
+  const [paymentRequests, setPaymentRequests] = useState(() => normalizePaymentRequests(initialPaymentRequests));
+  const [contacts, setContacts] = useState(() => normalizeContacts(initialContacts));
   const [selectedDebtIds, setSelectedDebtIds] = useState([]);
   const [manualAmount, setManualAmount] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState("ARS");
@@ -455,10 +552,10 @@ function App() {
   const [editingDebt, setEditingDebt] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const [sideNavCollapsed, setSideNavCollapsed] = useState(false);
-  const [selectedMonimonId, setSelectedMonimonId] = useState(() => readStored("monimon:selectedMonimonId", readStored("monimon:selectedSpace", "personal")));
+  const [selectedMonimonId, setSelectedMonimonId] = useState("personal");
   const [showCreateMonimon, setShowCreateMonimon] = useState(false);
   const [editingMonimonId, setEditingMonimonId] = useState(null);
-  const [personalSpaceName, setPersonalSpaceName] = useState(() => readStored("monimon:personalSpaceName", "PERSONAL"));
+  const [personalSpaceName, setPersonalSpaceName] = useState("PERSONAL");
   const [backendOnline, setBackendOnline] = useState(false);
   const backendLoaded = useRef(false);
 
@@ -513,15 +610,18 @@ function App() {
     apiRequest("/api/state", { headers })
       .then((state) => {
         if (cancelled) return;
-        if (Array.isArray(state.profiles) && state.profiles.length) setAppUsers(normalizeProfiles(state.profiles));
-        if (Array.isArray(state.members) && state.members.length) setMembers(normalizeMembers(state.members));
-        if (Array.isArray(state.monimons) && state.monimons.length) setMonimons(normalizeMonimons(state.monimons));
-        if (Array.isArray(state.monimonMembers) && state.monimonMembers.length) setMonimonMembers(normalizeMonimonMembers(state.monimonMembers));
+        if (Array.isArray(state.profiles)) setAppUsers(normalizeProfiles(state.profiles));
+        if (Array.isArray(state.members)) setMembers(normalizeMembers(state.members));
+        if (Array.isArray(state.monimons)) setMonimons(normalizeMonimons(state.monimons));
+        if (Array.isArray(state.monimonMembers)) setMonimonMembers(normalizeMonimonMembers(state.monimonMembers));
         if (Array.isArray(state.groups) && state.groups.length && !state.monimons?.length) replaceMonimonsFromOptions(normalizeMonimonOptions(state.groups));
-        if (Array.isArray(state.debts) && state.debts.length) setDebts(normalizeDebts(state.debts));
-        if (Array.isArray(state.payments) && state.payments.length) setPayments(normalizePayments(state.payments));
-        if (Array.isArray(state.paymentRequests) && state.paymentRequests.length) setPaymentRequests(normalizePaymentRequests(state.paymentRequests));
+        if (Array.isArray(state.debts)) setDebts(normalizeDebts(state.debts));
+        if (Array.isArray(state.payments)) setPayments(normalizePayments(state.payments));
+        if (Array.isArray(state.paymentRequests)) setPaymentRequests(normalizePaymentRequests(state.paymentRequests));
         if (Array.isArray(state.contacts)) setContacts(normalizeContacts(state.contacts));
+        if (typeof state.personalSpaceName === "string" && state.personalSpaceName.trim()) {
+          setPersonalSpaceName(state.personalSpaceName.trim().slice(0, 32));
+        }
         backendLoaded.current = true;
         setBackendOnline(true);
       })
@@ -540,20 +640,11 @@ function App() {
       apiRequest("/api/state", {
         method: "PUT",
         headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
-        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts })
+        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, personalSpaceName })
       }).catch(() => setBackendOnline(false));
     }, 350);
     return () => window.clearTimeout(timeoutId);
-  }, [backendOnline, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts]);
-
-  useEffect(() => localStorage.setItem("monimon:profiles", JSON.stringify(appUsers)), [appUsers]);
-  useEffect(() => localStorage.setItem("monimon:members", JSON.stringify(members)), [members]);
-  useEffect(() => localStorage.setItem("monimon:monimons", JSON.stringify(monimons)), [monimons]);
-  useEffect(() => localStorage.setItem("monimon:monimonMembers", JSON.stringify(monimonMembers)), [monimonMembers]);
-  useEffect(() => {
-    if (session) localStorage.setItem("monimon:authSession", JSON.stringify(session));
-    else localStorage.removeItem("monimon:authSession");
-  }, [session]);
+  }, [backendOnline, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, personalSpaceName]);
   useEffect(() => {
     if (!session?.accessToken) return;
     let cancelled = false;
@@ -573,12 +664,6 @@ function App() {
       cancelled = true;
     };
   }, [session?.accessToken]);
-  useEffect(() => localStorage.setItem("monimon:debts", JSON.stringify(debts)), [debts]);
-  useEffect(() => localStorage.setItem("monimon:payments", JSON.stringify(payments)), [payments]);
-  useEffect(() => localStorage.setItem("monimon:paymentRequests", JSON.stringify(paymentRequests)), [paymentRequests]);
-  useEffect(() => localStorage.setItem("monimon:contacts", JSON.stringify(contacts)), [contacts]);
-  useEffect(() => localStorage.setItem("monimon:selectedMonimonId", JSON.stringify(selectedMonimonId)), [selectedMonimonId]);
-  useEffect(() => localStorage.setItem("monimon:personalSpaceName", JSON.stringify(personalSpaceName)), [personalSpaceName]);
   useEffect(() => {
     const match = window.location.hash.match(/monimon=([^&]+)/);
     const sharedSpace = match ? decodeURIComponent(match[1]) : null;
@@ -593,15 +678,41 @@ function App() {
   }, [monimonOptions, selectedMonimonId]);
 
   function rememberAuthSession(payload) {
-    const profile = profileFromAuthUser(payload.user);
+    const incomingProfile = profileFromAuthUser(payload.user);
+    const existingProfile = appUsers.find((user) => user.id === incomingProfile.id);
+    const usedUsernames = new Set(
+      appUsers
+        .filter((user) => user.id !== incomingProfile.id)
+        .map((user) => normalizeUsername(user.username))
+        .filter(Boolean)
+    );
+    const profile = existingProfile
+      ? {
+          ...incomingProfile,
+          ...existingProfile,
+          email: incomingProfile.email,
+          role: incomingProfile.role,
+          username: existingProfile.username || incomingProfile.username
+        }
+      : {
+          ...incomingProfile,
+          username: makeUniqueUsername(
+            incomingProfile.username || usernameFromEmail(incomingProfile.email) || incomingProfile.name,
+            usedUsernames
+          )
+        };
     const member = memberFromProfile(profile);
     setAppUsers((items) => {
       const exists = items.some((user) => user.id === profile.id);
-      return exists ? items.map((user) => (user.id === profile.id ? { ...profile, ...user, email: profile.email } : user)) : [profile, ...items];
+      return exists
+        ? items.map((user) => (user.id === profile.id ? { ...profile, ...user, email: profile.email, username: user.username || profile.username } : user))
+        : [profile, ...items];
     });
     setMembers((items) => {
       const exists = items.some((item) => item.id === member.id);
-      return exists ? items.map((item) => (item.id === member.id ? { ...member, ...item, profileId: profile.id } : item)) : [member, ...items];
+      return exists
+        ? items.map((item) => (item.id === member.id ? { ...member, ...item, profileId: profile.id, username: item.username || member.username, email: item.email || member.email } : item))
+        : [member, ...items];
     });
     setSession({
       userId: profile.id,
@@ -641,8 +752,26 @@ function App() {
   async function submitLogin(event) {
     event.preventDefault();
     setError("");
+    const isRegister = authMode === "register";
+    const username = isRegister ? normalizeUsername(authName) : "";
     if (authMode === "register" && authPassword !== authPasswordConfirm) {
       setError("Las contraseñas no coinciden.");
+      return;
+    }
+    if (authMode === "register" && username.length < 3) {
+      setError("Elegí un nombre de usuario de al menos 3 caracteres.");
+      return;
+    }
+    if (authMode === "register" && appUsers.some((user) => normalizeUsername(user.username) === username)) {
+      setError("Ese nombre de usuario ya está en uso.");
+      return;
+    }
+    if (authMode === "register" && !authCountry) {
+      setError("Seleccioná un país.");
+      return;
+    }
+    if (!isRegister && !authEmail.includes("@")) {
+      setError("Ingresá tu email para iniciar sesión.");
       return;
     }
     setAuthLoading(true);
@@ -652,7 +781,13 @@ function App() {
         body: JSON.stringify({
           email: authEmail.trim(),
           password: authPassword,
-          name: authName.trim()
+          ...(isRegister
+            ? {
+                name: username.toUpperCase(),
+                username,
+                country: authCountry
+              }
+            : {})
         })
       });
       if (payload.access_token && payload.user) {
@@ -695,6 +830,19 @@ function App() {
 
   function updateActiveUser(updates) {
     setAppUsers((items) => items.map((user) => (user.id === activeUser.id ? { ...user, ...updates } : user)));
+    if (updates.name || updates.username) {
+      setMembers((items) =>
+        items.map((member) =>
+          member.profileId === activeUser.id || member.id === activeUser.id
+            ? {
+                ...member,
+                ...(updates.name ? { displayName: updates.name } : {}),
+                ...(updates.username ? { username: updates.username } : {})
+              }
+            : member
+        )
+      );
+    }
   }
 
   function clearAuthSession() {
@@ -707,7 +855,6 @@ function App() {
     setProfileMenuOpen(false);
     setProfileModal(null);
     window.history.replaceState(null, "", window.location.pathname);
-    localStorage.removeItem("monimon:authSession");
   }
 
   async function logout() {
@@ -842,7 +989,7 @@ function App() {
         <div className="ambient" />
         <section className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-4 py-8 lg:grid-cols-[1fr_430px] lg:px-8">
           <div className="brand-copy">
-            <img src="/moni-logo-cropped.png" alt="moni mon!" className="hero-logo" />
+            <img src="/moni-logo-current.png" alt="moni mon!" className="hero-logo" />
             <h1>Las cuentas claritas.</h1>
             <p>La app que conserva amistades.</p>
             <div className="hero-mascots">
@@ -858,6 +1005,8 @@ function App() {
             setAuthPasswordConfirm={setAuthPasswordConfirm}
             authName={authName}
             setAuthName={setAuthName}
+            authCountry={authCountry}
+            setAuthCountry={setAuthCountry}
             authMode={authMode}
             setAuthMode={setAuthMode}
             showPassword={showPassword}
@@ -924,6 +1073,8 @@ function App() {
       replaceMonimons={replaceMonimonsFromOptions}
       showCreateMonimon={showCreateMonimon}
       setShowCreateMonimon={setShowCreateMonimon}
+      showContacts={showContacts}
+      setShowContacts={setShowContacts}
       editingMonimonId={editingMonimonId}
       setEditingMonimonId={setEditingMonimonId}
       paymentError={paymentError}
@@ -958,6 +1109,8 @@ function LoginCard({
   setAuthPasswordConfirm,
   authName,
   setAuthName,
+  authCountry,
+  setAuthCountry,
   authMode,
   setAuthMode,
   showPassword,
@@ -971,45 +1124,42 @@ function LoginCard({
   return (
     <div className="login-panel">
       <form onSubmit={submitLogin} className="glass-card login-card">
-        <img src="/moni-logo-cropped.png" alt="moni mon!" className="login-card-logo" />
+        <img src="/acorn-logo.png" alt="Bellota de MONI MON!" className="login-card-symbol" />
 
-        {!isRegister && (
-          <>
-            <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
-              <GoogleMark /> <span>Continuar con Google</span>
-            </button>
+        <button type="button" className="secondary-login-action" onClick={loginWithGoogle} disabled={authLoading}>
+          <GoogleMark /> <span>Continuar con Google</span>
+        </button>
 
-            <div className="auth-divider">
-              <span>O ingresá con Usuario o Email</span>
-            </div>
-          </>
-        )}
+        <div className="auth-divider">
+          <span>{isRegister ? "O registrate con email" : "O ingresá con email"}</span>
+        </div>
 
         {isRegister && (
           <div className="pin-field auth-field login-input-field">
             <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
             <input
               id="auth-name"
-              aria-label="Nombre de usuario"
+              aria-label="Nombre de usuario obligatorio"
               value={authName}
-              onChange={(event) => setAuthName(event.target.value.slice(0, 40))}
-              autoComplete="name"
-              placeholder="Nombre de usuario"
+              onChange={(event) => setAuthName(normalizeUsername(event.target.value))}
+              autoComplete="username"
+              placeholder="Nombre de usuario *"
+              required
             />
           </div>
         )}
 
         <div className="pin-field auth-field login-input-field">
-          <span className="field-icon" aria-hidden="true"><UserRound size={18} /></span>
+          <span className="field-icon" aria-hidden="true"><Mail size={18} /></span>
           <input
             id="auth-email"
-            aria-label="Usuario o Email"
+            aria-label="Email"
             value={authEmail}
             onChange={(event) => setAuthEmail(event.target.value)}
             autoComplete="email"
             inputMode="email"
             type="email"
-            placeholder={isRegister ? "Email" : "Usuario o Email"}
+            placeholder="Email *"
             required
           />
         </div>
@@ -1023,7 +1173,7 @@ function LoginCard({
             onChange={(event) => setAuthPassword(event.target.value)}
             autoComplete={isRegister ? "new-password" : "current-password"}
             type={showPassword ? "text" : "password"}
-            placeholder="Contraseña"
+            placeholder="Contraseña *"
             minLength={6}
             required
           />
@@ -1042,10 +1192,33 @@ function LoginCard({
               onChange={(event) => setAuthPasswordConfirm(event.target.value)}
               autoComplete="new-password"
               type={showPassword ? "text" : "password"}
-              placeholder="Repetir contraseña"
+              placeholder="Repetir contraseña *"
               minLength={6}
               required
             />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar u ocultar contraseña">
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        )}
+
+        {isRegister && (
+          <div className="pin-field login-input-field country-select-field">
+            <span className="field-icon" aria-hidden="true"><MapPin size={18} /></span>
+            <select
+              id="auth-country"
+              aria-label="País obligatorio"
+              value={authCountry}
+              onChange={(event) => setAuthCountry(event.target.value)}
+              required
+            >
+              <option value="">Tu País/Región *</option>
+              {countryOptions.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -1069,6 +1242,7 @@ function LoginCard({
             type="button"
             onClick={() => {
               setAuthPasswordConfirm("");
+              setAuthCountry("");
               setAuthMode(isRegister ? "login" : "register");
             }}
           >
@@ -1128,6 +1302,8 @@ function Dashboard({
   replaceMonimons,
   showCreateMonimon,
   setShowCreateMonimon,
+  showContacts,
+  setShowContacts,
   editingMonimonId,
   setEditingMonimonId,
   paymentError,
@@ -1167,14 +1343,15 @@ function Dashboard({
   const outgoingDebts = openExpenses.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const incomingLoans = openLoans.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const outgoingLoans = openLoans.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
-  const summaryByCurrency = [...incomingDebts, ...incomingLoans, ...outgoingDebts, ...outgoingLoans].reduce((totals, debt) => {
+  const expenseTotalsByCurrency = globalExpenseTotalsFor(openExpenses, activeUser.id, membersForSelectedMonimon);
+  const summaryByCurrency = [...incomingLoans, ...outgoingLoans].reduce((totals, debt) => {
     if (debt.fromMemberId === activeUser.id) {
       const amount = debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon);
       return addCurrencyTotal(totals, debt.currency, "theyOwe", amount);
     }
     const amount = debtShareFor(debt, activeUser.id, membersForSelectedMonimon);
     return amount > 0 ? addCurrencyTotal(totals, debt.currency, "iOwe", amount) : totals;
-  }, emptyCurrencyTotals());
+  }, expenseTotalsByCurrency);
   const theyOwe = summaryByCurrency.ARS.theyOwe;
   const iOwe = summaryByCurrency.ARS.iOwe;
   const selectedDebts = outgoingDebts.filter((debt) => selectedDebtIds.includes(debt.id));
@@ -1268,7 +1445,7 @@ function Dashboard({
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 lg:px-6">
         <header className="topbar">
           <div className="flex items-center gap-4">
-            <img src="/moni-logo.png" alt="moni mon!" className="app-logo" />
+            <img src="/moni-logo-current.png" alt="moni mon!" className="app-logo" />
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -1366,7 +1543,7 @@ function Dashboard({
                   summaryByCurrency={summaryByCurrency}
                 />
                 {activeView === "gastos" && (
-                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
+                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} incomingTotal={expenseTotalsByCurrency.ARS.theyOwe} outgoingTotal={expenseTotalsByCurrency.ARS.iOwe} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
                 {activeView === "prestamos" && (
                   <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingLoans} outgoingDebts={outgoingLoans} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Préstamos" action="Nuevo préstamo" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
@@ -1505,6 +1682,7 @@ function Dashboard({
       {profileModal === "settings" && (
         <SettingsModal
           activeUser={activeUser}
+          appUsers={appUsers}
           updateActiveUser={updateActiveUser}
           personalSpaceName={personalSpaceName}
           setPersonalSpaceName={setPersonalSpaceName}
@@ -1533,26 +1711,35 @@ function Dashboard({
 }
 
 function SummaryHeader({ summaryByCurrency }) {
+  const [selectedCurrency, setSelectedCurrency] = useState("ARS");
+  const availableCurrencies = ["ARS", "USD"].filter((currency) => summaryByCurrency[currency]);
+  const currentCurrency = summaryByCurrency[selectedCurrency] ? selectedCurrency : "ARS";
+  const totals = summaryByCurrency[currentCurrency] || { theyOwe: 0, iOwe: 0 };
+
   return (
     <section className="summary-card">
       <div className="summary-top">
         <div>
           <h1>Resumen</h1>
         </div>
+        <label className="summary-currency-select">
+          <span>Moneda</span>
+          <select
+            aria-label="Moneda del resumen"
+            value={currentCurrency}
+            onChange={(event) => setSelectedCurrency(event.target.value)}
+          >
+            {availableCurrencies.map((currency) => (
+              <option key={currency} value={currency}>{currency}</option>
+            ))}
+          </select>
+        </label>
       </div>
-      {["ARS", "USD"].map((currency) => {
-        const totals = summaryByCurrency[currency];
-        return (
-          <div className="summary-currency-group" key={currency}>
-            <span className="summary-currency-label">{currency}</span>
-            <div className="summary-metrics">
-              <Metric label="Saldo neto" value={totals.theyOwe - totals.iOwe} currency={currency} />
-              <Metric label="Te deben" value={totals.theyOwe} currency={currency} positive />
-              <Metric label="Debes" value={totals.iOwe} currency={currency} negative />
-            </div>
-          </div>
-        );
-      })}
+      <div className="summary-metrics">
+        <Metric label="Saldo neto" value={totals.theyOwe - totals.iOwe} currency={currentCurrency} />
+        <Metric label="Te deben" value={totals.theyOwe} currency={currentCurrency} positive />
+        <Metric label="Debes" value={totals.iOwe} currency={currentCurrency} negative />
+      </div>
     </section>
   );
 }
@@ -1684,19 +1871,32 @@ function PersonalSpaceModal({ personalSpaceName, setPersonalSpaceName, onClose }
   );
 }
 
-function SettingsModal({ activeUser, updateActiveUser, personalSpaceName, setPersonalSpaceName, deleteAccount, onClose }) {
+function SettingsModal({ activeUser, appUsers, updateActiveUser, personalSpaceName, setPersonalSpaceName, deleteAccount, onClose }) {
+  const [username, setUsername] = useState(activeUser.username || usernameFromProfile(activeUser));
   const [name, setName] = useState(activeUser.name);
   const [spaceName, setSpaceName] = useState(personalSpaceName);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   async function saveSettings() {
+    const cleanUsername = normalizeUsername(username);
     const cleanName = name.trim().slice(0, 24);
-    if (!cleanName) {
-      setError("Ingresá un nombre.");
+    if (cleanUsername.length < 3) {
+      setError("Elegí un usuario único de al menos 3 caracteres.");
       return;
     }
-    updateActiveUser({ name: cleanName.toUpperCase() });
+    const usernameExists = appUsers.some(
+      (user) => user.id !== activeUser.id && normalizeUsername(user.username) === cleanUsername
+    );
+    if (usernameExists) {
+      setError("Ese usuario único ya está en uso.");
+      return;
+    }
+    if (!cleanName) {
+      setError("Ingresá un apodo.");
+      return;
+    }
+    updateActiveUser({ name: cleanName.toUpperCase(), username: cleanUsername });
     setPersonalSpaceName((spaceName.trim() || "PERSONAL").slice(0, 32).toUpperCase());
     onClose();
   }
@@ -1721,7 +1921,17 @@ function SettingsModal({ activeUser, updateActiveUser, personalSpaceName, setPer
           <h2 id="settings-title">Configuración</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
         </div>
-        <label>Nombre de usuario</label>
+        <label>Usuario único</label>
+        <input
+          value={username}
+          maxLength={24}
+          onChange={(event) => setUsername(normalizeUsername(event.target.value))}
+          placeholder="usuario.unico"
+        />
+        <p className="settings-hint">
+          Tu usuario público es {displayHandle(username)}. Sirve para que te encuentren, no para iniciar sesión.
+        </p>
+        <label>Apodo visible</label>
         <input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} />
         <label>Nombre del espacio personal</label>
         <input value={spaceName} maxLength={32} onChange={(event) => setSpaceName(event.target.value.toUpperCase())} placeholder="PERSONAL" />
@@ -2007,7 +2217,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
   );
 }
 
-function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, selectedDebtIds, setSelectedDebtIds, isMonimonMode, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt }) {
+function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, incomingTotal, outgoingTotal, selectedDebtIds, setSelectedDebtIds, isMonimonMode, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt }) {
   return (
     <section className="glass-card panel">
       <PanelTitle icon={<ListChecks size={18} />} title={title || (isMonimonMode ? "Gastos" : "Mis gastos")} action={preview ? null : action || "Nuevo gasto"} onAction={onNewDebt} />
@@ -2016,6 +2226,7 @@ function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, selecte
           title="Te deben"
           tone="positive"
           debts={preview ? incomingDebts.slice(0, 3) : incomingDebts}
+          totalOverride={incomingTotal}
           selectedDebtIds={selectedDebtIds}
           setSelectedDebtIds={setSelectedDebtIds}
           onEditDebt={onEditDebt}
@@ -2027,6 +2238,7 @@ function DebtPanel({ activeUser, appUsers, incomingDebts, outgoingDebts, selecte
           title="Debes"
           tone="negative"
           debts={preview ? outgoingDebts.slice(0, 2) : outgoingDebts}
+          totalOverride={outgoingTotal}
           onEditDebt={onEditDebt}
           onDeleteDebt={onDeleteDebt}
           amountForDebt={(debt) => debtShareFor(debt, activeUser.id, appUsers)}
@@ -2573,15 +2785,15 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
     .map((contact) => members.find((member) => member.id === contact.memberId))
     .filter(isRegisteredContactCandidate)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const normalizedQuery = normalizedSearch(searchedQuery);
+  const normalizedQuery = searchMode === "email" ? normalizedSearch(searchedQuery) : normalizeUsername(searchedQuery);
   const foundMember = normalizedQuery
     ? members
         .filter(isRegisteredContactCandidate)
         .find((member) => {
           if (member.id === activeUser.id || contactMemberIds.has(member.id)) return false;
-          const searchableName = normalizedSearch(member.name);
+          const searchableUsername = normalizeUsername(member.username);
           const searchableEmail = normalizedSearch(member.email);
-          return searchMode === "email" ? searchableEmail === normalizedQuery : searchableName === normalizedQuery;
+          return searchMode === "email" ? searchableEmail === normalizedQuery : searchableUsername === normalizedQuery;
         })
     : null;
   const hasSearched = Boolean(searchedQuery);
@@ -2590,6 +2802,13 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
     event.preventDefault();
     setInviteCopied(false);
     setSearchedQuery(query);
+  }
+
+  function changeSearchMode(mode) {
+    setSearchMode(mode);
+    setQuery("");
+    setSearchedQuery("");
+    setInviteCopied(false);
   }
 
   function sendContactRequest(memberId) {
@@ -2615,45 +2834,10 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
         <h2 id="contacts-title"><BookUser size={22} /> Contactos</h2>
         <button type="button" onClick={onClose} aria-label="Cerrar contactos">Cerrar</button>
       </div>
-      <form className="contacts-search-form" onSubmit={submitContactSearch}>
-        <div className="contacts-search-mode" role="group" aria-label="Tipo de búsqueda">
-          <button type="button" className={searchMode === "email" ? "active" : ""} onClick={() => setSearchMode("email")}>
-            <Mail size={16} /> Email
-          </button>
-          <button type="button" className={searchMode === "username" ? "active" : ""} onClick={() => setSearchMode("username")}>
-            <UserRound size={16} /> Usuario
-          </button>
-        </div>
-        <div className="contacts-search">
-          <UserRound size={18} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchMode === "email" ? "Buscar por Email" : "Buscar por nombre de usuario"}
-          />
-          <button type="submit" aria-label="Buscar contacto"><Search size={18} /></button>
-        </div>
-      </form>
-      {hasSearched && (
-        <div className="contact-search-result">
-          {foundMember ? (
-            <ContactRow member={foundMember} actionLabel="Enviar solicitud" onAction={() => sendContactRequest(foundMember.id)} />
-          ) : (
-            <div className="contact-not-found">
-              <span>
-                <b>No encontramos ese usuario.</b>
-                <small>Podés invitarlo a crear una cuenta en MONI MON!.</small>
-              </span>
-              <button type="button" onClick={inviteToApp}>{inviteCopied ? "Invitación copiada" : "Invitar"}</button>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="contacts-grid">
-        <section className="contacts-column">
+      <div className="contacts-layout">
+        <section className="contacts-column contacts-agenda-column">
           <div className="group-heading">
             <span>Tu agenda</span>
-            <b>{contactMembers.length}</b>
           </div>
           <div className="contacts-list">
             {contactMembers.length ? (
@@ -2672,6 +2856,42 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
             )}
           </div>
         </section>
+        <section className="contacts-search-column">
+          <form className="contacts-search-form" onSubmit={submitContactSearch}>
+            <div className="contacts-search-mode" role="group" aria-label="Tipo de búsqueda">
+              <button type="button" className={searchMode === "email" ? "active" : ""} onClick={() => changeSearchMode("email")}>
+                <Mail size={16} /> Email
+              </button>
+              <button type="button" className={searchMode === "username" ? "active" : ""} onClick={() => changeSearchMode("username")}>
+                <UserRound size={16} /> Usuario
+              </button>
+            </div>
+            <div className="contacts-search">
+              <UserRound size={18} />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={searchMode === "email" ? "Buscar por Email" : "Buscar por nombre de usuario"}
+              />
+              <button type="submit" aria-label="Buscar contacto"><Search size={18} /></button>
+            </div>
+          </form>
+          {hasSearched && (
+            <div className="contact-search-result">
+              {foundMember ? (
+                <ContactRow member={foundMember} actionLabel="Enviar solicitud" onAction={() => sendContactRequest(foundMember.id)} />
+              ) : (
+                <div className="contact-not-found">
+                  <span>
+                    <b>No encontramos ese usuario.</b>
+                    <small>Podés invitarlo a crear una cuenta en MONI MON!.</small>
+                  </span>
+                  <button type="button" onClick={inviteToApp}>{inviteCopied ? "Invitación copiada" : "Invitar"}</button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
     </section>
   );
@@ -2679,7 +2899,8 @@ function ContactsPanel({ activeUser, members, contacts, onAddContact, onRemoveCo
 
 function ContactRow({ member, status = "active", actionLabel, actionClassName = "", onAction }) {
   const isGhost = member.memberStatus === "ghost";
-  const caption = status === "pending" ? "Solicitud enviada" : isGhost ? "Integrante no registrado" : member.email || "Usuario registrado";
+  const handle = displayHandle(member.username);
+  const caption = status === "pending" ? "Solicitud enviada" : isGhost ? "Integrante no registrado" : handle || member.email || "Usuario registrado";
   return (
     <div className="contact-row">
       <Avatar user={member} />
@@ -2819,8 +3040,9 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt }) {
-  const total = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, onEditDebt, onDeleteDebt, amountForDebt, totalOverride }) {
+  const calculatedTotal = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
+  const total = Number.isFinite(totalOverride) ? totalOverride : calculatedTotal;
   return (
     <div>
       <div className="group-heading">

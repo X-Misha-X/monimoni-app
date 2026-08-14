@@ -143,6 +143,14 @@ button {
   margin: 0 auto 20px;
 }
 
+.login-card-symbol {
+  display: block;
+  width: 74px;
+  height: 74px;
+  margin: 0 auto 18px;
+  object-fit: contain;
+}
+
 .card-heading {
   display: flex;
   align-items: flex-end;
@@ -478,9 +486,32 @@ button {
   font-size: 18px;
 }
 
-.login-input-field input::placeholder {
+.login-input-field select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--milk);
+  padding: 15px 16px;
   font-size: 16px;
   font-weight: 800;
+  outline: none;
+  appearance: none;
+}
+
+.login-input-field select option {
+  background: #171110;
+  color: var(--milk);
+}
+
+.login-input-field input::placeholder,
+.login-input-field select:invalid {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.login-input-field select:invalid {
+  color: var(--muted);
 }
 
 .auth-options-row {
@@ -786,6 +817,26 @@ button {
 
 .delete-monimon-btn:hover {
   background: rgba(255, 126, 134, 0.2);
+}
+
+.readonly-setting {
+  display: flex;
+  min-height: 46px;
+  align-items: center;
+  border: 1px solid rgba(236, 156, 157, 0.22);
+  border-radius: 8px;
+  background: rgba(8, 7, 5, 0.28);
+  color: var(--muted);
+  padding: 0 14px;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.settings-hint {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .sensitive-zone {
@@ -1476,6 +1527,31 @@ button {
   gap: 18px;
 }
 
+.summary-currency-select {
+  min-width: 130px;
+}
+
+.summary-currency-select span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-currency-select select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(236, 156, 157, 0.26);
+  border-radius: 8px;
+  background: rgba(8, 7, 5, 0.48);
+  color: #dea0b3;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 900;
+  outline: none;
+}
+
 .contact-select {
   min-width: 220px;
 }
@@ -1606,7 +1682,7 @@ button {
 }
 
 .contacts-modal {
-  width: min(820px, 100%);
+  width: min(920px, 100%);
 }
 
 .contacts-modal .modal-head h2 {
@@ -1721,8 +1797,23 @@ button {
   margin-top: 16px;
 }
 
-.contacts-modal .contacts-grid {
-  grid-template-columns: 1fr;
+.contacts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.contacts-search-column {
+  min-width: 0;
+  border: 1px solid rgba(236, 156, 157, 0.18);
+  border-radius: 8px;
+  background: rgba(8, 7, 5, 0.16);
+  padding: 12px;
+}
+
+.contacts-agenda-column {
+  min-height: 180px;
 }
 
 .contacts-column {
@@ -2701,11 +2792,16 @@ button {
   .app-layout,
   .dashboard-grid,
   .overview-grid,
-  .contacts-grid {
+  .contacts-grid,
+  .contacts-layout {
     display: block;
   }
 
   .contacts-column + .contacts-column {
+    margin-top: 14px;
+  }
+
+  .contacts-search-column {
     margin-top: 14px;
   }
 

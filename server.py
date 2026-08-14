@@ -1,7 +1,9 @@
 import json
 import os
+import re
 import sys
 import traceback
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -35,6 +37,14 @@ ADMIN_EMAILS = {
 }
 
 
+def normalize_username(value=""):
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[^a-z0-9._]", "", text.lower())
+    text = re.sub(r"\.{2,}", ".", text).strip("._")
+    return text[:24]
+
+
 EMPTY_STATE = {
     "profiles": [],
     "members": [],
@@ -44,6 +54,7 @@ EMPTY_STATE = {
     "payments": [],
     "paymentRequests": [],
     "contacts": [],
+    "personalSpaceName": "PERSONAL",
 }
 
 
@@ -191,6 +202,17 @@ def validate_member_in_monimon(state, member_id, monimon_id):
 
 
 def validate_state(state):
+    seen_usernames = {}
+    for profile in state.get("profiles", []):
+        profile_id = profile.get("id")
+        username = normalize_username(profile.get("username"))
+        if not username:
+            continue
+        existing_profile_id = seen_usernames.get(username)
+        if existing_profile_id and existing_profile_id != profile_id:
+            raise RuntimeError("Ese nombre de usuario ya esta en uso.")
+        seen_usernames[username] = profile_id
+
     for debt in state.get("debts", []):
         monimon_id = debt.get("monimonId")
         if not monimon_id:
@@ -229,6 +251,8 @@ def migrate_legacy_state(state):
                 "id": profile_id,
                 "profileId": profile_id,
                 "displayName": profile.get("name") or profile.get("displayName") or profile.get("email") or "User",
+                "username": profile.get("username") or normalize_username(profile.get("email") or profile.get("name")),
+                "email": profile.get("email") or "",
                 "status": "active",
             })
             member_ids.add(profile_id)
@@ -251,6 +275,9 @@ def migrate_legacy_state(state):
 
 def put_state(state):
     profiles, members, monimons, monimon_members = migrate_legacy_state(state)
+    personal_space_name = state.get("personalSpaceName")
+    if not isinstance(personal_space_name, str) or not personal_space_name.strip():
+        personal_space_name = "PERSONAL"
     clean_state = {
         "profiles": profiles,
         "members": members,
@@ -260,6 +287,7 @@ def put_state(state):
         "payments": state.get("payments") if isinstance(state.get("payments"), list) else [],
         "paymentRequests": state.get("paymentRequests") if isinstance(state.get("paymentRequests"), list) else [],
         "contacts": state.get("contacts") if isinstance(state.get("contacts"), list) else [],
+        "personalSpaceName": personal_space_name.strip()[:32],
     }
     validate_state(clean_state)
     payload = {"key": STATE_KEY, "data": clean_state}
@@ -315,10 +343,25 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
             if path == "/api/auth/signup":
+                email = payload.get("email", "")
+                username = normalize_username(payload.get("username") or payload.get("name") or email.split("@")[0])
+                if len(username) < 3:
+                    json_response(self, 400, {"error": "El nombre de usuario debe tener al menos 3 caracteres."})
+                    return
+                state = get_state()
+                for profile in state.get("profiles", []):
+                    if normalize_username(profile.get("username") or profile.get("email") or profile.get("name")) == username:
+                        json_response(self, 409, {"error": "Ese nombre de usuario ya está en uso."})
+                        return
+                user_metadata = {
+                    "display_name": payload.get("name", "") or username.upper(),
+                    "username": username,
+                    "country": payload.get("country", ""),
+                }
                 data = auth_request("POST", "signup", {
-                    "email": payload.get("email", ""),
+                    "email": email,
                     "password": payload.get("password", ""),
-                    "data": {"display_name": payload.get("name", "")},
+                    "data": user_metadata,
                 })
                 json_response(self, 200, decorate_auth_payload(data))
                 return
