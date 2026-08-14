@@ -151,6 +151,13 @@ def unique_by_id(rows):
     return list(result.values())
 
 
+def unique_by_keys(rows, keys):
+    result = {}
+    for row in rows:
+        result[tuple(row[key] for key in keys)] = row
+    return list(result.values())
+
+
 def unique_memberships(rows):
     result = {}
     for row in rows:
@@ -212,7 +219,6 @@ def migrate_state(state):
             "profile_id": profile["id"],
             "kind": "registered",
             "display_name": profile["display_name"],
-            "avatar_url": profile.get("avatar_url"),
             "created_by_profile_id": profile["id"],
         })
         if primary_member_id is None:
@@ -230,7 +236,6 @@ def migrate_state(state):
             "profile_id": profile_id,
             "kind": "registered" if profile_id else "guest",
             "display_name": display_name,
-            "avatar_url": text_value(member, "avatarUrl", "avatar_url") or None,
             "created_by_profile_id": primary_profile_id,
         })
         if primary_member_id is None and profile_id:
@@ -249,7 +254,7 @@ def migrate_state(state):
             "settlement_mode": "global",
             "default_currency": text_value(monimon, "defaultCurrency", "currency", default="ARS").upper()[:8],
             "owner_profile_id": primary_profile_id,
-            "created_by_profile_id": primary_profile_id,
+            "created_by_member_id": primary_member_id,
             "archived_at": None,
         })
         for member_raw in monimon.get("members") or []:
@@ -271,7 +276,7 @@ def migrate_state(state):
             "settlement_mode": "global",
             "default_currency": "ARS",
             "owner_profile_id": primary_profile_id,
-            "created_by_profile_id": primary_profile_id,
+            "created_by_member_id": primary_member_id,
             "archived_at": None,
         })
         monimon_map["personal"] = personal_id
@@ -311,22 +316,20 @@ def migrate_state(state):
         expense_id = as_uuid(raw_id, "expense")
         expenses.append({
             "id": expense_id,
-            "legacy_id": raw_id,
             "monimon_id": monimon_id,
             "paid_by_member_id": paid_by_member_id,
-            "description": text_value(debt, "reason", "title", "description", "concept", default="Gasto"),
+            "title": text_value(debt, "reason", "title", "description", "concept", default="Gasto"),
             "amount": number_value(debt, "amount", "total", "value"),
             "currency": text_value(debt, "currency", default="ARS").upper()[:8],
             "expense_date": normalize_date(text_value(debt, "date", "createdAt", "expenseDate")),
-            "split_mode": "equal",
             "status": "verified" if text_value(debt, "status", default="verified") not in {"pending", "rejected", "deleted"} else text_value(debt, "status"),
             "created_by_profile_id": primary_profile_id,
         })
         participant_ids = active_members_by_monimon.get(monimon_id) or {paid_by_member_id}
         for member_id in sorted(participant_ids):
             expense_participants.append({
-                "id": stable_uuid("expense-participant", expense_id, member_id),
                 "expense_id": expense_id,
+                "monimon_id": monimon_id,
                 "member_id": member_id,
                 "share_amount": None,
             })
@@ -339,14 +342,13 @@ def migrate_state(state):
         to_raw = text_value(payment, "toMemberId", "to", "receiverMemberId")
         payments.append({
             "id": as_uuid(raw_id, "payment"),
-            "legacy_id": raw_id,
             "monimon_id": monimon_id,
-            "payer_member_id": member_map.get(from_raw) or as_uuid(from_raw, "member"),
-            "receiver_member_id": member_map.get(to_raw) or as_uuid(to_raw, "member"),
+            "from_member_id": member_map.get(from_raw) or as_uuid(from_raw, "member"),
+            "to_member_id": member_map.get(to_raw) or as_uuid(to_raw, "member"),
             "amount": number_value(payment, "amount", "total", "value"),
             "currency": text_value(payment, "currency", default="ARS").upper()[:8],
             "payment_date": normalize_date(text_value(payment, "date", "createdAt", "paymentDate")),
-            "description": text_value(payment, "reason", "title", "description", default="Pago"),
+            "detail": text_value(payment, "reason", "title", "description", default="Pago"),
             "status": "verified" if text_value(payment, "status", default="verified") not in {"pending", "rejected", "deleted"} else text_value(payment, "status"),
             "created_by_profile_id": primary_profile_id,
         })
@@ -361,10 +363,9 @@ def migrate_state(state):
             continue
         contacts.append({
             "id": stable_uuid("contact", owner_profile_id, contact_profile_id),
-            "owner_profile_id": owner_profile_id,
-            "contact_profile_id": contact_profile_id,
+            "requester_profile_id": owner_profile_id,
+            "recipient_profile_id": contact_profile_id,
             "status": text_value(contact, "status", default="accepted") if text_value(contact, "status") in {"pending", "accepted", "blocked", "removed"} else "accepted",
-            "requested_by_profile_id": owner_profile_id,
         })
 
     if state.get("paymentRequests"):
@@ -376,7 +377,7 @@ def migrate_state(state):
         "monimons": unique_by_id(monimons),
         "monimon_members": memberships,
         "expenses": unique_by_id(expenses),
-        "expense_participants": unique_by_id(expense_participants),
+        "expense_participants": unique_by_keys(expense_participants, ("expense_id", "member_id")),
         "payments": unique_by_id(payments),
         "contact_relationships": unique_by_id(contacts),
         "warnings": warnings,
@@ -401,6 +402,8 @@ def upsert_table(table, rows):
     path = f"{table}?on_conflict=id"
     if table == "monimon_members":
         path = f"{table}?on_conflict=monimon_id,member_id"
+    if table == "expense_participants":
+        path = f"{table}?on_conflict=expense_id,member_id"
     supabase_request(
         "POST",
         path,

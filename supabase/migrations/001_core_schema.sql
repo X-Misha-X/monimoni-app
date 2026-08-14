@@ -138,6 +138,7 @@ create unique index if not exists members_profile_unique_idx
 create table if not exists public.monimons (
   id uuid primary key default gen_random_uuid(),
   owner_profile_id uuid references public.profiles(id) on delete set null,
+  created_by_member_id uuid references public.members(id) on delete set null,
   name text not null,
   type public.monimon_type not null default 'group',
   settlement_mode public.settlement_mode not null default 'global',
@@ -149,6 +150,7 @@ create table if not exists public.monimons (
 );
 
 alter table public.monimons add column if not exists owner_profile_id uuid references public.profiles(id) on delete set null;
+alter table public.monimons add column if not exists created_by_member_id uuid references public.members(id) on delete set null;
 alter table public.monimons add column if not exists type public.monimon_type not null default 'group';
 alter table public.monimons add column if not exists settlement_mode public.settlement_mode not null default 'global';
 alter table public.monimons add column if not exists default_currency text not null default 'ARS';
