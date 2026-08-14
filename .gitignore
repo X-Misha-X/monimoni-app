@@ -11,6 +11,7 @@ __pycache__/
 backend.err.log
 backend.log
 build.log
+backups/
 
 .DS_Store
 Thumbs.db
