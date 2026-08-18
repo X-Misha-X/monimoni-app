@@ -225,17 +225,24 @@ def get_state():
     if not normalized_state:
         return legacy_state
     normalized_state = merge_legacy_group_metadata(legacy_state, normalized_state)
+    legacy_group_ids = {
+        item.get("id")
+        for item in legacy_state.get("monimons", [])
+        if isinstance(item, dict) and item.get("id") and item.get("id") != "personal"
+    }
 
     return {
         **legacy_state,
         **normalized_state,
-        "debts": merge_personal_legacy_records(
+        "debts": merge_authoritative_records(
             legacy_state.get("debts", []),
             normalized_state.get("debts", []),
+            legacy_group_ids,
         ),
-        "payments": merge_payment_records(
+        "payments": merge_authoritative_records(
             legacy_state.get("payments", []),
             normalized_state.get("payments", []),
+            legacy_group_ids,
         ),
         "paymentRequests": legacy_state.get("paymentRequests", []),
         "contacts": legacy_state.get("contacts", []),
@@ -301,6 +308,21 @@ def merge_personal_legacy_records(legacy_records, normalized_records):
         if item.get("monimonId", "personal") == "personal"
     ]
     return [*normalized_records, *personal_records]
+
+
+def merge_authoritative_records(legacy_records, normalized_records, legacy_group_ids):
+    if not isinstance(legacy_records, list):
+        legacy_records = []
+    if not isinstance(normalized_records, list):
+        normalized_records = []
+    legacy_group_ids = set(legacy_group_ids or [])
+    normalized_fallback = [
+        item for item in normalized_records
+        if isinstance(item, dict)
+        and item.get("monimonId") not in legacy_group_ids
+        and item.get("monimonId") != "personal"
+    ]
+    return [*normalized_fallback, *legacy_records]
 
 
 def merge_payment_records(legacy_records, normalized_records):
@@ -756,6 +778,9 @@ def sync_normalized_state(state):
     upsert_rows("expenses", unique_rows(expense_rows, ("id",)), "id")
     upsert_rows("expense_participants", unique_rows(participant_rows, ("expense_id", "member_id")), "expense_id,member_id")
     upsert_rows("payments", unique_rows(payment_rows, ("id",)), "id")
+    active_group_ids = {row["id"] for row in monimon_rows}
+    mark_stale_normalized_rows_deleted("expenses", active_group_ids, {row["id"] for row in expense_rows})
+    mark_stale_normalized_rows_deleted("payments", active_group_ids, {row["id"] for row in payment_rows})
 
 
 def is_uuid(value):
@@ -792,6 +817,30 @@ def upsert_rows(table, rows, conflict_target):
         rows,
         {"Prefer": "resolution=merge-duplicates,return=minimal"},
     )
+
+
+def mark_stale_normalized_rows_deleted(table, group_ids, active_ids):
+    if optional_supabase_rows(f"{table}?select=id&limit=1") is None:
+        return
+    active_ids = set(active_ids or [])
+    for group_id in group_ids or []:
+        if not group_id:
+            continue
+        encoded_group_id = urllib.parse.quote(str(group_id), safe="")
+        rows = optional_supabase_rows(f"{table}?group_id=eq.{encoded_group_id}&status=neq.deleted&select=id") or []
+        stale_ids = [
+            row.get("id")
+            for row in rows
+            if row.get("id") and row.get("id") not in active_ids
+        ]
+        for row_id in stale_ids:
+            encoded_row_id = urllib.parse.quote(str(row_id), safe="")
+            supabase_request(
+                "PATCH",
+                f"{table}?id=eq.{encoded_row_id}",
+                {"status": "deleted"},
+                headers={"Prefer": "return=minimal"},
+            )
 
 
 def delete_monimon(monimon_id):
