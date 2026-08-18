@@ -1,0 +1,384 @@
+/*
+  EDITOR SIMPLE DE TEMAS
+
+  Cambia colores aca, no en styles.css.
+  Podes usar hex (#88BAC8) o rgba(...) si queres transparencia.
+
+  Guia rapida:
+  --fondo-app: fondo general de pantalla.
+  --fondo-profundo: segundo fondo para gradientes.
+  --panel: paneles grandes.
+  --tarjeta: tarjetas, filas y cajas.
+  --campo: inputs, selects y botones secundarios.
+  --titulo: titulos y texto principal fuerte.
+  --texto: texto normal.
+  --texto-suave: texto secundario.
+  --borde: lineas y bordes.
+  --boton: botones principales.
+  --boton-texto: texto de botones principales.
+  --acento: detalles, links y estados activos.
+  --positivo: importes positivos.
+  --negativo: importes negativos.
+*/
+
+[data-theme] {
+  --surface-0: var(--fondo-app);
+  --surface-1: var(--fondo-profundo);
+  --surface-2: var(--fondo-profundo);
+  --surface-3: var(--campo);
+  --surface-panel: color-mix(in srgb, var(--panel) 92%, transparent);
+  --surface-card: color-mix(in srgb, var(--tarjeta) 58%, transparent);
+  --surface-elevated: color-mix(in srgb, var(--campo) 78%, transparent);
+  --surface-soft: color-mix(in srgb, var(--acento) 18%, transparent);
+  --border: color-mix(in srgb, var(--borde) 28%, transparent);
+  --border-strong: color-mix(in srgb, var(--borde) 54%, transparent);
+  --text-strong: var(--titulo);
+  --text: var(--texto);
+  --text-muted: var(--texto-suave);
+  --accent: var(--boton);
+  --accent-strong: var(--acento);
+  --accent-contrast: var(--boton-texto);
+  --warm: var(--calido);
+  --success: var(--positivo);
+  --danger: var(--negativo);
+  --rose: var(--acento);
+
+  --dark: var(--surface-0);
+  --cocoa: var(--surface-2);
+  --cocoa-2: var(--surface-3);
+  --line: var(--border);
+  --line-hot: var(--border-strong);
+  --milk: var(--text-strong);
+  --muted: var(--text-muted);
+  --sakura: var(--accent-strong);
+  --net: var(--warm);
+  --green: var(--success);
+  --red: var(--danger);
+  --pink: var(--accent);
+  --pink-soft: var(--rose);
+  --berry: var(--boton);
+}
+
+[data-theme="cocoa"] {
+  --fondo-app: #080705;
+  --fondo-profundo: #1a120f;
+  --panel: #120d0b;
+  --tarjeta: #080705;
+  --campo: #211c1a;
+  --titulo: #f2e7dd;
+  --texto: #e7d8cf;
+  --texto-suave: #b79f93;
+  --borde: #ec9c9d;
+  --boton: #bf7387;
+  --boton-texto: #28100d;
+  --acento: #ec9c9d;
+  --calido: #e6b8a0;
+  --positivo: #6edc8f;
+  --negativo: #ff7e86;
+}
+
+[data-theme="botanical"] {
+  --fondo-app: #111712;
+  --fondo-profundo: #213935;
+  --panel: #18211d;
+  --tarjeta: #111712;
+  --campo: #263733;
+  --titulo: #f2e7dd;
+  --texto: #d9e1dc;
+  --texto-suave: #a99a86;
+  --borde: #88bac8;
+  --boton: #548a82;
+  --boton-texto: #071111;
+  --acento: #88bac8;
+  --calido: #a99a86;
+  --positivo: #79d7a1;
+  --negativo: #e88488;
+}
+
+[data-theme="rust-blue"] {
+  --fondo-app: #171112;
+  --fondo-profundo: #563838;
+  --panel: #1f181b;
+  --tarjeta: #171112;
+  --campo: #563838;
+  --titulo: #f0ded8;
+  --texto: #e2d1cc;
+  --texto-suave: #b99596;
+  --borde: #8aa0ad;
+  --boton: #e0a08b;
+  --boton-texto: #171112;
+  --acento: #8aa0ad;
+  --calido: #9c7276;
+  --positivo: #83d7a1;
+  --negativo: #ff8f92;
+}
+
+[data-theme="ice-cream"] {
+  --fondo-app: #070c10;
+  --fondo-profundo: #432217;
+  --panel: #120f0e;
+  --tarjeta: #070c10;
+  --campo: #432217;
+  --titulo: #f2e2d0;
+  --texto: #ead9ce;
+  --texto-suave: #d8b5ba;
+  --borde: #d8b5ba;
+  --boton: #a96f4d;
+  --boton-texto: #180f0d;
+  --acento: #d8b5ba;
+  --calido: #e5d1b5;
+  --positivo: #77d89f;
+  --negativo: #f18482;
+}
+
+[data-theme="espresso"] {
+  --fondo-app: #050909;
+  --fondo-profundo: #1f2b2a;
+  --panel: #0a0d0d;
+  --tarjeta: #050909;
+  --campo: #1f2b2a;
+  --titulo: #f5eef6;
+  --texto: #e7dddd;
+  --texto-suave: #bfa7a0;
+  --borde: #f5eef6;
+  --boton: #7e1f05;
+  --boton-texto: #f5eef6;
+  --acento: #f5eef6;
+  --calido: #3a160f;
+  --positivo: #7ed99f;
+  --negativo: #ff8a7e;
+}
+
+[data-theme="blossom"] {
+  --fondo-app: #191015;
+  --fondo-profundo: #4a2030;
+  --panel: #1f131a;
+  --tarjeta: #191015;
+  --campo: #4a2030;
+  --titulo: #eef0e8;
+  --texto: #e6dcd4;
+  --texto-suave: #d9ccc1;
+  --borde: #d9ccc1;
+  --boton: #a34d63;
+  --boton-texto: #191015;
+  --acento: #b37a86;
+  --calido: #d9ccc1;
+  --positivo: #78d69e;
+  --negativo: #ff7d86;
+}
+
+[data-theme="dawn"] {
+  --fondo-app: #252a3c;
+  --fondo-profundo: #525871;
+  --panel: #272a3a;
+  --tarjeta: #252a3c;
+  --campo: #525871;
+  --titulo: #f8ccaa;
+  --texto: #f1d6c5;
+  --texto-suave: #c9b1b5;
+  --borde: #f2c1a3;
+  --boton: #cd9fa0;
+  --boton-texto: #252a3c;
+  --acento: #f2c1a3;
+  --calido: #f8ccaa;
+  --positivo: #86dca5;
+  --negativo: #ff858e;
+}
+
+[data-theme="mulberry"] {
+  --fondo-app: #292030;
+  --fondo-profundo: #43374f;
+  --panel: #2b2232;
+  --tarjeta: #292030;
+  --campo: #544664;
+  --titulo: #cbd3d8;
+  --texto: #e4dce4;
+  --texto-suave: #c9a9b8;
+  --borde: #cbd3d8;
+  --boton: #a67ca4;
+  --boton-texto: #292030;
+  --acento: #6a8ca9;
+  --calido: #c9a9b8;
+  --positivo: #83d9a3;
+  --negativo: #ff8390;
+}
+
+[data-theme="sakura"] {
+  --fondo-app: #160d11;
+  --fondo-profundo: #522e30;
+  --panel: #221418;
+  --tarjeta: #160d11;
+  --campo: #522e30;
+  --titulo: #f0d2de;
+  --texto: #ead8df;
+  --texto-suave: #bd7893;
+  --borde: #d89fb6;
+  --boton: #9d5a6f;
+  --boton-texto: #160d11;
+  --acento: #d89fb6;
+  --calido: #f2cfc7;
+  --positivo: #78d99f;
+  --negativo: #ff7e86;
+}
+
+[data-theme="coral-viridian"] {
+  --fondo-app: #102a27;
+  --fondo-profundo: #29413a;
+  --panel: #102a27;
+  --tarjeta: #0e1e1c;
+  --campo: #29413a;
+  --titulo: #f9d3c0;
+  --texto: #f3ddd3;
+  --texto-suave: #faaaa2;
+  --borde: #f9d3c0;
+  --boton: #d97172;
+  --boton-texto: #102a27;
+  --acento: #faaaa2;
+  --calido: #f9d3c0;
+  --positivo: #7bd99f;
+  --negativo: #ff8088;
+}
+
+[data-theme="burgundy-blue"] {
+  --fondo-app: #130711;
+  --fondo-profundo: #3d5d91;
+  --panel: #140a15;
+  --tarjeta: #130711;
+  --campo: #3d5d91;
+  --titulo: #f2dcdb;
+  --texto: #e7dce4;
+  --texto-suave: #f2aebc;
+  --borde: #f2dcdb;
+  --boton: #6c0820;
+  --boton-texto: #f2dcdb;
+  --acento: #f2aebc;
+  --calido: #5a86cb;
+  --positivo: #7bd79f;
+  --negativo: #ff7e86;
+}
+
+[data-theme="frost"] {
+  --fondo-app: #02122f;
+  --fondo-profundo: #23354d;
+  --panel: #051226;
+  --tarjeta: #02122f;
+  --campo: #23354d;
+  --titulo: #f0ecdd;
+  --texto: #e1e7ef;
+  --texto-suave: #aeb9cb;
+  --borde: #8ba3c5;
+  --boton: #8ba3c5;
+  --boton-texto: #02122f;
+  --acento: #f0ecdd;
+  --calido: #cbd3d8;
+  --positivo: #81dba4;
+  --negativo: #ff8589;
+}
+
+[data-theme="gelato"] {
+  --fondo-app: #161820;
+  --fondo-profundo: #3a3b45;
+  --panel: #17181f;
+  --tarjeta: #161820;
+  --campo: #3a3b45;
+  --titulo: #f4f4f5;
+  --texto: #e3e5e9;
+  --texto-suave: #c2c6cf;
+  --borde: #c2c6cf;
+  --boton: #5f4838;
+  --boton-texto: #f4f4f5;
+  --acento: #f4f4f5;
+  --calido: #c2c6cf;
+  --positivo: #82dca3;
+  --negativo: #ff8a85;
+}
+
+[data-theme="cherry"] {
+  --fondo-app: #130b0a;
+  --fondo-profundo: #7a4138;
+  --panel: #180e0d;
+  --tarjeta: #130b0a;
+  --campo: #7a4138;
+  --titulo: #f0efe4;
+  --texto: #e5e3d8;
+  --texto-suave: #b29b90;
+  --borde: #d1d2ca;
+  --boton: #8b001e;
+  --boton-texto: #f0efe4;
+  --acento: #d1d2ca;
+  --calido: #b29b90;
+  --positivo: #7eda9e;
+  --negativo: #ff7e86;
+}
+
+[data-theme="soft-blush"] {
+  --fondo-app: #20191c;
+  --fondo-profundo: #604d53;
+  --panel: #211a1d;
+  --tarjeta: #20191c;
+  --campo: #604d53;
+  --titulo: #ffdada;
+  --texto: #eee0e3;
+  --texto-suave: #d5c5c8;
+  --borde: #ffdada;
+  --boton: #db7f8e;
+  --boton-texto: #20191c;
+  --acento: #ffdada;
+  --calido: #d5c5c8;
+  --positivo: #80dba3;
+  --negativo: #ff858c;
+}
+
+[data-theme="milk-tea"] {
+  --fondo-app: #1c100c;
+  --fondo-profundo: #443025;
+  --panel: #1f130e;
+  --tarjeta: #1c100c;
+  --campo: #443025;
+  --titulo: #f2cfca;
+  --texto: #ead8ce;
+  --texto-suave: #aa7f66;
+  --borde: #f2cfca;
+  --boton: #ec9c9d;
+  --boton-texto: #1c100c;
+  --acento: #f2cfca;
+  --calido: #aa7f66;
+  --positivo: #7edca2;
+  --negativo: #ff8087;
+}
+
+[data-theme="dessert"] {
+  --fondo-app: #070c10;
+  --fondo-profundo: #432217;
+  --panel: #160d0c;
+  --tarjeta: #070c10;
+  --campo: #432217;
+  --titulo: #f2dcdb;
+  --texto: #f0ded8;
+  --texto-suave: #d8b6b4;
+  --borde: #f2cfc7;
+  --boton: #d97172;
+  --boton-texto: #1f120e;
+  --acento: #faaaa2;
+  --calido: #f9d3c0;
+  --positivo: #7bdca3;
+  --negativo: #ff8088;
+}
+
+[data-theme="succulent"] {
+  --fondo-app: #0c101b;
+  --fondo-profundo: #333a57;
+  --panel: #11151f;
+  --tarjeta: #0c101b;
+  --campo: #333a57;
+  --titulo: #e7f1f4;
+  --texto: #d6e4e8;
+  --texto-suave: #a7b7c7;
+  --borde: #88bac8;
+  --boton: #4d869b;
+  --boton-texto: #0c101b;
+  --acento: #88bac8;
+  --calido: #a67ca4;
+  --positivo: #7edba3;
+  --negativo: #ff7f8b;
+}

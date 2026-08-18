@@ -43,6 +43,7 @@ import {
   X
 } from "lucide-react";
 import "./styles.css";
+import "./theme-editor.css";
 
 const avatarOptions = Array.from({ length: 28 }, (_, index) => ({
   id: `avatar-${String(index + 1).padStart(2, "0")}`,
