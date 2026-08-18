@@ -25,6 +25,7 @@ import {
   Mail,
   Maximize2,
   MapPin,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -69,6 +70,17 @@ const initialPayments = [];
 const initialPaymentRequests = [];
 
 const initialContacts = [];
+
+const appThemes = [
+  { id: "cocoa", name: "Cacao" },
+  { id: "botanical", name: "Botanico" },
+  { id: "sakura", name: "Sakura" },
+  { id: "frost", name: "Frost" },
+  { id: "dessert", name: "Postre" },
+  { id: "succulent", name: "Suculenta" }
+];
+
+const defaultAppTheme = appThemes[0].id;
 
 function buildCountryOptions() {
   if (!("Intl" in window) || typeof Intl.DisplayNames !== "function") return [];
@@ -1699,6 +1711,7 @@ function Dashboard({
 }) {
   const [toastMessage, setToastMessage] = useState("");
   const [groupActionsOpen, setGroupActionsOpen] = useState(false);
+  const [appTheme, setAppTheme] = useState(() => window.localStorage.getItem("monimon-theme") || defaultAppTheme);
   const scopedDebts = debts.filter((debt) => debt.monimonId === selectedMonimonId);
   const scopedPayments = payments.filter((payment) => payment.monimonId === selectedMonimonId);
   const scopedPaymentRequests = paymentRequests.filter((request) => request.monimonId === selectedMonimonId);
@@ -1938,12 +1951,22 @@ function Dashboard({
     }
   }
 
+  useEffect(() => {
+    window.localStorage.setItem("monimon-theme", appTheme);
+  }, [appTheme]);
+
   return (
-    <main className="min-h-screen bg-app text-milk">
+    <main className="min-h-screen bg-app text-milk" data-theme={appTheme}>
       <div className="ambient" />
       <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 lg:px-6">
         <header className="topbar">
           <div className="flex items-center gap-3">
+            <label className="theme-switcher" title="Probar tema visual">
+              <Palette size={16} />
+              <select value={appTheme} onChange={(event) => setAppTheme(event.target.value)} aria-label="Tema visual">
+                {appThemes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
+              </select>
+            </label>
             <button
               type="button"
               className={`header-contacts-btn ${showContacts ? "active" : ""}`}
