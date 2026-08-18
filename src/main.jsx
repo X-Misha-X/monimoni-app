@@ -74,8 +74,20 @@ const initialContacts = [];
 const appThemes = [
   { id: "cocoa", name: "Cacao" },
   { id: "botanical", name: "Botanico" },
+  { id: "rust-blue", name: "Oxido azul" },
+  { id: "ice-cream", name: "Helado" },
+  { id: "espresso", name: "Espresso" },
+  { id: "blossom", name: "Blossom" },
+  { id: "dawn", name: "Amanecer" },
+  { id: "mulberry", name: "Mulberry" },
   { id: "sakura", name: "Sakura" },
+  { id: "coral-viridian", name: "Coral" },
+  { id: "burgundy-blue", name: "Burgundy" },
   { id: "frost", name: "Frost" },
+  { id: "gelato", name: "Gelato" },
+  { id: "cherry", name: "Cherry" },
+  { id: "soft-blush", name: "Blush" },
+  { id: "milk-tea", name: "Milk Tea" },
   { id: "dessert", name: "Postre" },
   { id: "succulent", name: "Suculenta" }
 ];
