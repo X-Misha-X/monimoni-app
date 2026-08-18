@@ -4809,6 +4809,8 @@ button {
 .profile-trigger,
 .workspace-people span,
 .metric,
+.debt-row,
+.history-row,
 .summary-detail-panel,
 .settlement-card,
 .new-payment-box,
@@ -4910,6 +4912,9 @@ button {
 }
 
 .metric.active,
+.debt-row:hover,
+.debt-row:focus-visible,
+.debt-row:has(.check.active),
 .settlement-card.expanded,
 .request-card.active {
   border-color: var(--border-strong);
@@ -4918,6 +4923,10 @@ button {
 
 .metric p,
 .empty-state,
+.debt-row small,
+.history-row small,
+.debt-line strong span,
+.debt-share span,
 .advanced-switch-row small,
 .profile-menu-head small,
 .history-movement-cell small,
@@ -4927,6 +4936,10 @@ button {
 }
 
 .metric b,
+.debt-row b,
+.debt-row strong,
+.history-row b,
+.history-row strong,
 .summary-currency-label,
 .summary-detail-table td,
 .history-table td,
@@ -4939,11 +4952,45 @@ button {
 }
 
 .metric-detail-btn,
+.debt-detail-btn,
 .forgot-password-link,
 .auth-switch-copy button,
 .summary-tool-select span,
 .archive-gallery-tools span {
   color: var(--accent-strong);
+}
+
+.counterparty-line span,
+.debt-share {
+  color: var(--accent-strong) !important;
+}
+
+.debt-detail-btn {
+  border-color: var(--border);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.debt-detail-btn:hover {
+  background: var(--accent-strong);
+  color: var(--accent-contrast);
+}
+
+.row-actions button,
+.debt-detail-box {
+  border-color: var(--border);
+  background: var(--surface-elevated);
+  color: var(--text-strong);
+}
+
+.row-actions button:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+}
+
+.debt-detail-line {
+  color: var(--text-muted);
 }
 
 .summary-metrics {
