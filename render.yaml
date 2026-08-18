@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: monimon-api-staging
+    runtime: python
+    plan: free
+    buildCommand: ""
+    startCommand: python server.py
+    healthCheckPath: /api/health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: MONIMONI_STATE_KEY
+        value: staging
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: MONIMONI_ADMIN_EMAILS
+        sync: false
