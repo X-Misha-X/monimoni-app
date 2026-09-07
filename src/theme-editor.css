@@ -221,7 +221,7 @@
      PANTALLA PRINCIPAL
      ========================= */
 
-  --inicio-fondo: #7377a3;
+  --inicio-fondo: var(--nav-fondo);
   --inicio-texto-titulo: #f8f4f6;
   --inicio-texto-secundario: #e7d6e7;
   --inicio-texto-terciario: #e7d6e7;
