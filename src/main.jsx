@@ -25,6 +25,7 @@ import {
   Mail,
   Maximize2,
   MapPin,
+  MessageCircle,
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
@@ -72,28 +73,17 @@ const initialPaymentRequests = [];
 
 const initialContacts = [];
 
+const initialActivityLog = [];
+
 const appThemes = [
-  { id: "cocoa", name: "Cacao" },
-  { id: "botanical", name: "Botanico" },
-  { id: "rust-blue", name: "Oxido azul" },
-  { id: "ice-cream", name: "Helado" },
-  { id: "espresso", name: "Espresso" },
-  { id: "blossom", name: "Blossom" },
-  { id: "dawn", name: "Amanecer" },
-  { id: "mulberry", name: "Mulberry" },
-  { id: "sakura", name: "Sakura" },
-  { id: "coral-viridian", name: "Coral" },
-  { id: "burgundy-blue", name: "Burgundy" },
-  { id: "frost", name: "Frost" },
-  { id: "gelato", name: "Gelato" },
-  { id: "cherry", name: "Cherry" },
-  { id: "soft-blush", name: "Blush" },
-  { id: "milk-tea", name: "Milk Tea" },
-  { id: "dessert", name: "Postre" },
-  { id: "succulent", name: "Suculenta" }
+  { id: "default", name: "Syringa" },
+  { id: "cocoa", name: "Hortensia" },
+  { id: "botanical", name: "Índigo" },
+  { id: "rust-blue", name: "Lavanda" }
 ];
 
 const defaultAppTheme = appThemes[0].id;
+const appThemeIds = new Set(appThemes.map((theme) => theme.id));
 
 function buildCountryOptions() {
   if (!("Intl" in window) || typeof Intl.DisplayNames !== "function") return [];
@@ -119,16 +109,7 @@ const navItems = [
   { id: "pago", label: "Liquidaciones", icon: ReceiptText },
   { id: "pagos", label: "Historial", icon: History },
   { id: "archivo", label: "Archivo", icon: Archive },
-  { id: "solicitudes", label: "Solicitudes", icon: Bell, disabled: true }
-];
-
-const groupNavItems = [
-  { id: "resumen", label: "Resumen", icon: Home },
-  { id: "gastos", label: "Gastos", icon: ListChecks },
-  { id: "pago", label: "Liquidaciones", icon: ReceiptText },
-  { id: "pagos", label: "Historial", icon: History },
-  { id: "archivo", label: "Archivo", icon: Archive },
-  { id: "solicitudes", label: "Solicitudes", icon: Bell, disabled: true }
+  { id: "solicitudes", label: "Solicitudes", icon: Bell }
 ];
 
 const groupIconOptions = [
@@ -148,23 +129,103 @@ const groupIconOptions = [
 
 const expenseCategoryOptions = [
   { id: "general", label: "General", emoji: "🧾" },
-  { id: "restaurant", label: "Restaurante", emoji: "🍽️" },
+  { id: "cards", label: "Tarjetas", emoji: "💳" },
+  { id: "services", label: "Servicios", emoji: "🧰" },
+  { id: "supplies", label: "Suministros", emoji: "📦" },
+  { id: "electronics", label: "Electrónica", emoji: "🔌" },
+  { id: "food", label: "Alimentos", emoji: "🍽️" },
+  { id: "games", label: "Juegos", emoji: "🎮" },
+  { id: "music", label: "Música", emoji: "🎵" },
+  { id: "movies", label: "Películas", emoji: "🎬" },
   { id: "transport", label: "Transporte", emoji: "🚗" },
-  { id: "supermarket", label: "Supermercado", emoji: "🛒" },
-  { id: "pharmacy", label: "Farmacia", emoji: "💊" },
-  { id: "loan", label: "Préstamo", emoji: "💸" },
-  { id: "excursion", label: "Excursión", emoji: "🥾" },
-  { id: "stay", label: "Estadía", emoji: "🏨" },
-  { id: "fuel", label: "Nafta", emoji: "⛽" },
-  { id: "tickets", label: "Entradas", emoji: "🎟️" },
-  { id: "shopping", label: "Compras", emoji: "🛍️" },
+  { id: "lodging", label: "Hospedaje", emoji: "🏨" },
+  { id: "facilities", label: "Instalaciones", emoji: "🛠️" },
+  { id: "cleaning", label: "Limpieza", emoji: "🧼" },
   { id: "health", label: "Salud", emoji: "🩺" },
-  { id: "home", label: "Casa", emoji: "🏠" },
-  { id: "gift", label: "Regalos", emoji: "🎁" }
+  { id: "gift", label: "Regalos", emoji: "🎁" },
+  { id: "insurance", label: "Seguro", emoji: "🛡️" },
+  { id: "loan", label: "Préstamos", emoji: "💸" },
+  { id: "beauty", label: "Belleza", emoji: "💄" },
+  { id: "shopping", label: "Compras", emoji: "🛍️" },
+  { id: "entertainment", label: "Entretenimiento", emoji: "🎟️" },
+  { id: "education", label: "Educación", emoji: "🎓" },
+  { id: "sports", label: "Deportes", emoji: "⚽" },
+  { id: "social", label: "Social", emoji: "🥂" },
+  { id: "clothing", label: "Ropa", emoji: "👕" },
+  { id: "cigarettes", label: "Cigarrillos", emoji: "🚬" },
+  { id: "devices", label: "Electrónicos", emoji: "📱" },
+  { id: "travel", label: "Viajes", emoji: "✈️" },
+  { id: "pets", label: "Mascotas", emoji: "🐾" },
+  { id: "repairs", label: "Reparaciones", emoji: "🔧" },
+  { id: "home", label: "Vivienda", emoji: "🏠" },
+  { id: "donations", label: "Donaciones", emoji: "🤝" },
+  { id: "children", label: "Hijos", emoji: "🧒" }
 ];
 
-const validViewIds = new Set(groupNavItems.map((item) => item.id));
+const validViewIds = new Set(navItems.map((item) => item.id));
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const DEFAULT_PUBLIC_APP_URL = "https://monimoni-web.vercel.app";
+const PUBLIC_APP_URL = String(import.meta.env.VITE_PUBLIC_APP_URL || DEFAULT_PUBLIC_APP_URL).replace(/\/+$/, "");
+const pendingInviteStorageKey = "monimon-pending-invite";
+const inviteCodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function normalizeInviteCode(value = "") {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 6);
+}
+
+function deterministicInviteCode(seed = "", salt = "") {
+  const source = `${seed || "monimon"}:${salt}`;
+  let hash = 2166136261;
+  for (let index = 0; index < source.length; index += 1) {
+    hash ^= source.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  let value = hash >>> 0;
+  let code = "";
+  for (let index = 0; index < 6; index += 1) {
+    code += inviteCodeAlphabet[value % inviteCodeAlphabet.length];
+    value = Math.floor(value / inviteCodeAlphabet.length);
+  }
+  return code;
+}
+
+function createInviteCode(usedCodes = new Set()) {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    let code = "";
+    for (let index = 0; index < 6; index += 1) {
+      code += inviteCodeAlphabet[Math.floor(Math.random() * inviteCodeAlphabet.length)];
+    }
+    if (!usedCodes.has(code)) return code;
+  }
+  let fallbackIndex = 1;
+  let fallback = deterministicInviteCode(`${Date.now()}-${fallbackIndex}`);
+  while (usedCodes.has(fallback)) {
+    fallbackIndex += 1;
+    fallback = deterministicInviteCode(`${Date.now()}-${fallbackIndex}`);
+  }
+  return fallback;
+}
+
+function inviteCodeForMonimon(monimon = {}) {
+  return normalizeInviteCode(monimon.inviteCode) || deterministicInviteCode(monimon.id);
+}
+
+function inviteTokenFromText(value = "") {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  try {
+    const url = new URL(text);
+    const pathMatch = url.pathname.match(/^\/grupo\/([^/?&]+)$/i);
+    return pathMatch ? decodeURIComponent(pathMatch[1]) : "";
+  } catch {
+    const pathMatch = text.match(/^\/?grupo\/([^/?&]+)$/i);
+    if (pathMatch) return decodeURIComponent(pathMatch[1]);
+    return normalizeInviteCode(text);
+  }
+}
 
 function money(value, currency = "ARS") {
   return new Intl.NumberFormat("es-AR", {
@@ -274,15 +335,52 @@ function displayHandle(username) {
   return cleanUsername ? `@${cleanUsername}` : "";
 }
 
+function displayPersonName(value, appUsers = []) {
+  if (!value) return "-";
+  const raw = String(value);
+  if (raw === "group" || raw.toUpperCase() === "GRUPO") return "GRUPO";
+  const normalizedRaw = normalizeUsername(raw.replace(/^@/, ""));
+  const normalizedText = normalizedSearch(raw);
+  const match = appUsers.find((user) => (
+    user.id === raw
+    || normalizeUsername(user.username) === normalizedRaw
+    || normalizedSearch(user.email) === normalizedText
+    || normalizedSearch(user.name) === normalizedText
+  ));
+  if (!match && raw.toLowerCase().startsWith("ghost-")) return "INTEGRANTE INVITADO";
+  return match ? shortDisplayName(match.name) : shortDisplayName(raw);
+}
+
+function shortDisplayName(value = "") {
+  const firstName = String(value).trim().split(/\s+/)[0];
+  return (firstName || "").toUpperCase();
+}
+
+function isHexColor(value) {
+  return /^#[0-9a-f]{6}$/i.test(String(value || "").trim());
+}
+
+function memberFrameColor(monimon, memberId) {
+  const color = monimon?.memberColors?.[memberId];
+  return isHexColor(color) ? color : "";
+}
+
+function PersonChip({ children, className = "", color = "" }) {
+  const style = isHexColor(color) ? { "--person-chip-fondo": color } : undefined;
+  return <span className={`person-chip ${className}`.trim()} style={style}>{children}</span>;
+}
+
 function profileFromAuthUser(user) {
   const metadata = user?.user_metadata || {};
   const displayName = metadata.display_name || metadata.full_name || metadata.name || user?.email?.split("@")[0] || "Usuario";
   const username = normalizeUsername(metadata.username || metadata.user_name || metadata.preferred_username || usernameFromEmail(user?.email) || displayName);
+  const provider = user?.app_metadata?.provider || user?.identities?.[0]?.provider || metadata.provider || "email";
   return {
     id: user.id,
     name: displayName.toUpperCase(),
     username,
     email: user.email || "",
+    authProvider: provider,
     role: user.app_metadata?.role || user.user_metadata?.role || "user",
     avatarSrc: metadata.avatar_url || avatarOptions[0].src,
     ...avatarCrop
@@ -346,7 +444,7 @@ function normalizeDebts(items) {
         date: item.date || formatISODate(todayISO()),
         status: item.status || "open",
         kind: item.kind === "loan" ? "loan" : "expense",
-        monimonId: item.monimonId || "personal"
+        monimonId: item.monimonId || ""
       }))
     : [];
 }
@@ -362,7 +460,7 @@ function normalizePayments(items) {
         amount: Number(item.amount) || 0,
         currency: item.currency || "ARS",
         date: item.date || formatISODate(todayISO()),
-        monimonId: item.monimonId || "personal"
+        monimonId: item.monimonId || ""
       }))
     : [];
 }
@@ -383,7 +481,7 @@ function normalizePaymentRequests(items) {
         amount: Number(item.amount) || 0,
         currency: item.currency || "ARS",
         date: item.date || formatISODate(todayISO()),
-        monimonId: item.monimonId || "personal",
+        monimonId: item.monimonId || "",
         status: item.status || "pending",
         createdAt: item.createdAt || new Date().toISOString()
       }))
@@ -391,15 +489,28 @@ function normalizePaymentRequests(items) {
 }
 
 function normalizeMonimonOptions(items) {
-  return Array.isArray(items)
-    ? items
-        .filter((item) => item && item.id && item.name)
-        .map((item) => {
-          const members = Array.isArray(item.members) ? item.members : [];
-          const adminIds = Array.isArray(item.adminIds) && item.adminIds.length ? item.adminIds : members.slice(0, 1);
-          return { ...item, icon: item.icon || "home", members, adminIds: adminIds.filter((id) => members.includes(id)) };
-        })
-    : [];
+  if (!Array.isArray(items)) return [];
+  const usedCodes = new Set();
+  return items
+    .filter((item) => item && item.id && item.name)
+    .map((item) => {
+      const members = Array.isArray(item.members) ? item.members : [];
+      const adminIds = Array.isArray(item.adminIds) && item.adminIds.length ? item.adminIds : members.slice(0, 1);
+      let inviteCode = normalizeInviteCode(item.inviteCode) || deterministicInviteCode(item.id);
+      let collisionIndex = 1;
+      while (usedCodes.has(inviteCode)) {
+        inviteCode = deterministicInviteCode(item.id, collisionIndex);
+        collisionIndex += 1;
+      }
+      usedCodes.add(inviteCode);
+      const memberColors = item.memberColors && typeof item.memberColors === "object" && !Array.isArray(item.memberColors)
+        ? Object.fromEntries(
+            Object.entries(item.memberColors)
+              .filter(([memberId, color]) => members.includes(memberId) && isHexColor(color))
+          )
+        : {};
+      return { ...item, inviteCode, icon: item.icon || "home", members, memberColors, adminIds: adminIds.filter((id) => members.includes(id)) };
+    });
 }
 
 function normalizeMembers(items) {
@@ -417,18 +528,33 @@ function normalizeMembers(items) {
 }
 
 function normalizeMonimons(items) {
-  return Array.isArray(items)
-    ? items
-        .filter((item) => item && item.id && item.name)
-        .map((item) => ({ ...item, name: item.name, icon: item.icon || "home", adminIds: Array.isArray(item.adminIds) ? item.adminIds : [] }))
-    : [];
+  if (!Array.isArray(items)) return [];
+  const usedCodes = new Set();
+  return items
+    .filter((item) => item && item.id && item.name)
+    .map((item) => {
+      let inviteCode = normalizeInviteCode(item.inviteCode) || deterministicInviteCode(item.id);
+      let collisionIndex = 1;
+      while (usedCodes.has(inviteCode)) {
+        inviteCode = deterministicInviteCode(item.id, collisionIndex);
+        collisionIndex += 1;
+      }
+      usedCodes.add(inviteCode);
+      return { ...item, name: item.name, inviteCode, icon: item.icon || "home", adminIds: Array.isArray(item.adminIds) ? item.adminIds : [] };
+    });
 }
 
 function normalizeMonimonMembers(items) {
   return Array.isArray(items)
     ? items
         .filter((item) => item && item.monimonId && item.memberId)
-        .map((item) => ({ ...item, status: item.status || "active" }))
+        .map((item) => ({
+          ...item,
+          status: item.status === "invited" ? "pending" : ["active", "pending", "removed"].includes(item.status) ? item.status : "active",
+          source: item.source || "direct",
+          invitedByMemberId: item.invitedByMemberId || null,
+          createdAt: item.createdAt || new Date().toISOString()
+        }))
     : [];
 }
 
@@ -443,6 +569,43 @@ function normalizeContacts(items) {
           nickname: item.nickname || "",
           status: item.status || "active",
           createdAt: item.createdAt || new Date().toISOString()
+        }))
+    : [];
+}
+
+function normalizeActivityLog(items) {
+  return Array.isArray(items)
+    ? items.filter(Boolean).map((item) => ({
+        ...item,
+        id: item.id || `activity-${Date.now()}-${Math.random()}`,
+        monimonId: item.monimonId || "",
+        memberId: item.memberId || "unknown",
+        activity: item.activity || "Actividad",
+        amount: Number(item.amount) || 0,
+        currency: item.currency || "ARS",
+        destination: item.destination || "",
+        destinationMemberId: item.destinationMemberId || "",
+        targetMemberId: item.targetMemberId || "",
+        balanceDelta: Number(item.balanceDelta) || 0,
+        date: item.date || formatISODate(todayISO()),
+        createdAt: item.createdAt || new Date().toISOString()
+      }))
+    : [];
+}
+
+function normalizeArchiveFiles(items) {
+  return Array.isArray(items)
+    ? items
+        .filter((item) => item && typeof item.dataUrl === "string" && item.dataUrl.startsWith("data:image/"))
+        .map((item) => ({
+          id: item.id || `archive-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          name: item.name || "imagen.png",
+          size: Number(item.size) || 0,
+          dataUrl: item.dataUrl,
+          monimonId: item.monimonId || "",
+          createdAt: item.createdAt || formatISODate(todayISO()),
+          uploadedBy: item.uploadedBy || "Usuario",
+          category: item.category || "General"
         }))
     : [];
 }
@@ -463,6 +626,20 @@ function normalizeProfiles(items) {
         avatarSrc: item.avatarSrc || avatarOptions[0].src
       };
     });
+}
+
+function authUserFromProfile(profile) {
+  const displayName = profile.name || profile.displayName || profile.email?.split("@")[0] || "Usuario";
+  return {
+    id: profile.id,
+    email: profile.email || "",
+    app_metadata: { role: profile.role || "user" },
+    user_metadata: {
+      display_name: displayName,
+      username: profile.username || usernameFromProfile(profile),
+      avatar_url: profile.avatarSrc || ""
+    }
+  };
 }
 
 function debtShareFor(debt, memberId, members) {
@@ -510,10 +687,18 @@ function debtSplitAmountFor(debt, memberId, members) {
 
 function expenseNetFor(debt, memberId, members) {
   if (debt.kind === "loan") return 0;
-  const participantIds = expenseParticipantIds(debt, members);
-  if (!participantIds.includes(memberId) || !participantIds.length) return 0;
-  const paid = debt.fromMemberId === memberId ? debt.amount : 0;
+  const paid = debt.fromMemberId === memberId ? Number(debt.amount) || 0 : 0;
   return paid - debtSplitAmountFor(debt, memberId, members);
+}
+
+function canonicalValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalValue).sort();
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalValue(value[key])]));
+}
+
+function sameCanonicalValue(a, b) {
+  return JSON.stringify(canonicalValue(a)) === JSON.stringify(canonicalValue(b));
 }
 
 function debtDateKey(debt) {
@@ -602,6 +787,12 @@ function settlementRowsFor(debts, members, currency, payments = []) {
     details: detailsByMember[member.id],
     balance: balancesByMember[member.id]
   }));
+}
+
+function signedMoney(value, currency = "ARS") {
+  const amount = Number(value) || 0;
+  if (Math.abs(amount) <= 0.009) return money(0, currency);
+  return `${amount > 0 ? "+" : "-"}${money(Math.abs(amount), currency)}`;
 }
 
 function emptyCurrencyTotals() {
@@ -726,8 +917,7 @@ function debtCounterpartyParts(debt, members) {
   return { fromName, toName };
 }
 
-function groupTargetId(activeUser, members, isMonimonMode) {
-  if (!isMonimonMode) return members.find((member) => member.id !== activeUser.id)?.id || members[0]?.id;
+function groupTargetId(activeUser, members) {
   if (members.length > 2) return "group";
   return members.find((member) => member.id !== activeUser.id)?.id || members[0]?.id;
 }
@@ -765,6 +955,7 @@ function App() {
   const [payments, setPayments] = useState(() => normalizePayments(initialPayments));
   const [paymentRequests, setPaymentRequests] = useState(() => normalizePaymentRequests(initialPaymentRequests));
   const [contacts, setContacts] = useState(() => normalizeContacts(initialContacts));
+  const [activityLog, setActivityLog] = useState(() => normalizeActivityLog(initialActivityLog));
   const [selectedDebtIds, setSelectedDebtIds] = useState([]);
   const [manualAmount, setManualAmount] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState("ARS");
@@ -773,17 +964,16 @@ function App() {
   const [showNewPayment, setShowNewPayment] = useState(false);
   const [showNewDebt, setShowNewDebt] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [archiveFiles, setArchiveFiles] = useState([]);
+  const [archiveFiles, setArchiveFiles] = useState(() => normalizeArchiveFiles([]));
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null);
   const [showContacts, setShowContacts] = useState(false);
   const [editingDebt, setEditingDebt] = useState(null);
   const [editingPayment, setEditingPayment] = useState(null);
   const [sideNavCollapsed, setSideNavCollapsed] = useState(false);
-  const [selectedMonimonId, setSelectedMonimonId] = useState("personal");
+  const [selectedMonimonId, setSelectedMonimonId] = useState("");
   const [showCreateMonimon, setShowCreateMonimon] = useState(false);
   const [editingMonimonId, setEditingMonimonId] = useState(null);
-  const [personalSpaceName, setPersonalSpaceName] = useState("PERSONAL");
   const [backendOnline, setBackendOnline] = useState(false);
   const [stateHydrated, setStateHydrated] = useState(false);
   const [stateLoadFailed, setStateLoadFailed] = useState(false);
@@ -791,10 +981,14 @@ function App() {
   const [backendWakeElapsed, setBackendWakeElapsed] = useState(0);
   const [saveError, setSaveError] = useState("");
   const [saveRetryTick, setSaveRetryTick] = useState(0);
+  const [appTheme, setAppTheme] = useState(() => {
+    const savedTheme = window.localStorage.getItem("monimon-theme");
+    return appThemeIds.has(savedTheme) ? savedTheme : defaultAppTheme;
+  });
   const backendLoaded = useRef(false);
   const saveRetryTimer = useRef(null);
 
-  const activeUser = session ? appUsers.find((user) => user.id === session.userId) || session.user : null;
+    const activeUser = session ? appUsers.find((user) => user.id === session.userId) || session.user : null;
   const otherUser = activeUser ? appUsers.find((user) => user.id !== activeUser.id) : null;
   const memberOptions = useMemo(() => {
     const profileMembers = appUsers
@@ -813,39 +1007,52 @@ function App() {
     };
     });
   }, [members, appUsers]);
-  const monimonOptions = useMemo(() => monimons.map((monimon) => ({
-    ...monimon,
-    members: [...new Set([
-      ...monimonMembers
+  const monimonOptions = useMemo(() => monimons.map((monimon) => {
+    const persistedMemberIds = monimonMembers
       .filter((item) => item.monimonId === monimon.id && item.status !== "removed")
-      .map((item) => item.memberId),
-      ...(activeUser?.id ? [activeUser.id] : [])
-    ])]
-  })), [monimons, monimonMembers, activeUser?.id]);
+      .map((item) => item.memberId);
+    return {
+      ...monimon,
+      members: [...new Set(persistedMemberIds.length ? persistedMemberIds : (monimon.members || []))]
+    };
+  }), [monimons, monimonMembers]);
 
   function replaceMonimonsFromOptions(nextMonimonsOrUpdater) {
     const nextMonimons = typeof nextMonimonsOrUpdater === "function" ? nextMonimonsOrUpdater(monimonOptions) : nextMonimonsOrUpdater;
-    const normalizedMonimons = normalizeMonimonOptions(nextMonimons)
-      .map((monimon) => ({
-        ...monimon,
-        members: [...new Set([activeUser?.id, ...(monimon.members || [])].filter(Boolean))]
-      }));
+    const normalizedMonimons = normalizeMonimonOptions(nextMonimons);
     setMonimons(normalizedMonimons.map(({ members: _members, ...monimon }) => monimon));
     setMonimonMembers((existingMemberships) => {
       const nextMonimonIds = new Set(normalizedMonimons.map((monimon) => monimon.id));
       const activeKeys = new Set(normalizedMonimons.flatMap((monimon) => (
         (monimon.members || []).map((memberId) => `${monimon.id}:${memberId}`)
       )));
+      const membershipByKey = new Map(existingMemberships.map((membership) => [`${membership.monimonId}:${membership.memberId}`, membership]));
+      const now = new Date().toISOString();
+      const memberById = new Map(memberOptions.map((member) => [member.id, member]));
       const preservedRemoved = existingMemberships
         .filter((membership) => nextMonimonIds.has(membership.monimonId))
         .filter((membership) => !activeKeys.has(`${membership.monimonId}:${membership.memberId}`))
-        .map((membership) => ({ ...membership, status: "removed" }));
+        .map((membership) => ({ ...membership, status: "removed", removedAt: membership.removedAt || now }));
       const activeMemberships = normalizedMonimons.flatMap((monimon) => (
-        (monimon.members || []).map((memberId) => ({
-          monimonId: monimon.id,
-          memberId,
-          status: "active"
-        }))
+        (monimon.members || []).map((memberId) => {
+          const previous = membershipByKey.get(`${monimon.id}:${memberId}`);
+          const member = memberById.get(memberId);
+          const isInvitedProfile = member?.profileId && memberId !== activeUser?.id;
+          const status = previous?.status && previous.status !== "removed"
+            ? previous.status
+            : isInvitedProfile
+              ? "pending"
+              : "active";
+          return {
+            ...(previous || {}),
+            monimonId: monimon.id,
+            memberId,
+            status,
+            source: previous?.source || (isInvitedProfile ? "agenda" : member?.memberStatus === "ghost" ? "manual" : "direct"),
+            invitedByMemberId: previous?.invitedByMemberId || (isInvitedProfile ? activeUser?.id || null : null),
+            createdAt: previous?.createdAt || now
+          };
+        })
       ));
       return [...activeMemberships, ...preservedRemoved];
     });
@@ -854,6 +1061,14 @@ function App() {
   useEffect(() => {
     let cancelled = false;
     let wakeTimer = null;
+    if (!session?.accessToken) {
+      backendLoaded.current = false;
+      setBackendOnline(false);
+      setStateLoadFailed(false);
+      setStateHydrated(true);
+      setBackendWakeElapsed(0);
+      return () => {};
+    }
     setStateHydrated(false);
     setStateLoadFailed(false);
     setBackendWakeElapsed(0);
@@ -874,9 +1089,8 @@ function App() {
         if (Array.isArray(state.payments)) setPayments(normalizePayments(state.payments));
         if (Array.isArray(state.paymentRequests)) setPaymentRequests(normalizePaymentRequests(state.paymentRequests));
         if (Array.isArray(state.contacts)) setContacts(normalizeContacts(state.contacts));
-        if (typeof state.personalSpaceName === "string" && state.personalSpaceName.trim()) {
-          setPersonalSpaceName(state.personalSpaceName.trim().slice(0, 32));
-        }
+        if (Array.isArray(state.activityLog)) setActivityLog(normalizeActivityLog(state.activityLog));
+        if (Array.isArray(state.archiveFiles)) setArchiveFiles(normalizeArchiveFiles(state.archiveFiles));
         backendLoaded.current = true;
         setBackendOnline(true);
         setSaveError("");
@@ -902,7 +1116,7 @@ function App() {
       apiRequest("/api/state", {
         method: "PUT",
         headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
-        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, personalSpaceName })
+        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, activityLog, archiveFiles })
       })
         .then(() => {
           setBackendOnline(true);
@@ -923,10 +1137,15 @@ function App() {
         });
     }, 350);
     return () => window.clearTimeout(timeoutId);
-  }, [saveRetryTick, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, personalSpaceName]);
+  }, [saveRetryTick, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, activityLog, archiveFiles]);
   useEffect(() => () => {
     if (saveRetryTimer.current) window.clearTimeout(saveRetryTimer.current);
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("monimon-theme", appTheme);
+  }, [appTheme]);
+
   useEffect(() => {
     if (!session?.accessToken) return;
     let cancelled = false;
@@ -951,15 +1170,23 @@ function App() {
     };
   }, [session?.accessToken]);
   useEffect(() => {
-    const match = window.location.hash.match(/monimon=([^&]+)/);
-    const sharedSpace = match ? decodeURIComponent(match[1]) : null;
-    if (sharedSpace && (sharedSpace === "personal" || monimonOptions.some((monimon) => monimon.id === sharedSpace))) {
-      setSelectedMonimonId(sharedSpace);
+    const sharedSpace = inviteTokenFromText(window.location.href);
+    const matchedGroup = sharedSpace
+      ? monimonOptions.find((monimon) => (
+        monimon.id === sharedSpace
+        || normalizedSearch(inviteCodeForMonimon(monimon)) === normalizedSearch(sharedSpace)
+      ))
+      : null;
+    if (sharedSpace) {
+      window.localStorage.setItem(pendingInviteStorageKey, sharedSpace);
+    }
+    if (matchedGroup) {
+      setSelectedMonimonId(matchedGroup.id);
     }
   }, [monimonOptions]);
   useEffect(() => {
-    if (selectedMonimonId !== "personal" && !monimonOptions.some((monimon) => monimon.id === selectedMonimonId)) {
-      setSelectedMonimonId("personal");
+    if (selectedMonimonId && !monimonOptions.some((monimon) => monimon.id === selectedMonimonId)) {
+      setSelectedMonimonId("");
     }
   }, [monimonOptions, selectedMonimonId]);
 
@@ -977,6 +1204,7 @@ function App() {
           ...incomingProfile,
           ...existingProfile,
           email: incomingProfile.email,
+          authProvider: incomingProfile.authProvider,
           role: incomingProfile.role,
           username: existingProfile.username || incomingProfile.username
         }
@@ -991,7 +1219,7 @@ function App() {
     setAppUsers((items) => {
       const exists = items.some((user) => user.id === profile.id);
       return exists
-        ? items.map((user) => (user.id === profile.id ? { ...profile, ...user, email: profile.email, username: user.username || profile.username } : user))
+        ? items.map((user) => (user.id === profile.id ? { ...profile, ...user, email: profile.email, authProvider: profile.authProvider, username: user.username || profile.username } : user))
         : [profile, ...items];
     });
     setMembers((items) => {
@@ -1009,7 +1237,7 @@ function App() {
       expiresAt: payload.expires_at || null,
       createdAt: Date.now()
     });
-    setSelectedMonimonId("personal");
+    setSelectedMonimonId("");
     setActiveView("resumen");
     setAuthPassword("");
     setError("");
@@ -1116,19 +1344,44 @@ function App() {
 
   function updateActiveUser(updates) {
     setAppUsers((items) => items.map((user) => (user.id === activeUser.id ? { ...user, ...updates } : user)));
-    if (updates.name || updates.username) {
+    if (updates.name || updates.username || updates.email) {
       setMembers((items) =>
         items.map((member) =>
           member.profileId === activeUser.id || member.id === activeUser.id
             ? {
                 ...member,
                 ...(updates.name ? { displayName: updates.name } : {}),
-                ...(updates.username ? { username: updates.username } : {})
+                ...(updates.username ? { username: updates.username } : {}),
+                ...(updates.email ? { email: updates.email } : {})
               }
             : member
         )
       );
     }
+  }
+
+  async function updateAccountEmail(email) {
+    const accessToken = session?.accessToken;
+    if (!accessToken) throw new Error("No hay sesión activa.");
+    const payload = await apiRequest("/api/auth/update-email", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ access_token: accessToken, email })
+    });
+    updateActiveUser({ email });
+    if (payload?.user) {
+      setSession((current) => current ? { ...current, user: payload.user } : current);
+    }
+  }
+
+  async function updateAccountPassword(password) {
+    const accessToken = session?.accessToken;
+    if (!accessToken) throw new Error("No hay sesión activa.");
+    await apiRequest("/api/auth/update-password", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ access_token: accessToken, password })
+    });
   }
 
   function clearAuthSession() {
@@ -1141,6 +1394,27 @@ function App() {
     setProfileMenuOpen(false);
     setProfileModal(null);
     window.history.replaceState(null, "", window.location.pathname);
+  }
+
+  function recordActivity({ monimonId = selectedMonimonId, memberId = activeUser?.id, activity, amount = 0, currency = "ARS", destination = "", destinationMemberId = "", targetMemberId = "", balanceDelta = 0 }) {
+    if (!activity) return;
+    setActivityLog((items) => [
+      {
+        id: `activity-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        monimonId,
+        memberId: memberId || "unknown",
+        activity,
+        amount: Number(amount) || 0,
+        currency,
+        destination,
+        destinationMemberId,
+        targetMemberId,
+        balanceDelta: Number(balanceDelta) || 0,
+        date: formatISODate(todayISO()),
+        createdAt: new Date().toISOString()
+      },
+      ...items
+    ]);
   }
 
   async function logout() {
@@ -1174,7 +1448,7 @@ function App() {
     const selectedMonimon = monimonOptions.find((monimon) => monimon.id === monimonIdOverride);
     const groupAdminIds = selectedMonimon?.adminIds?.length ? selectedMonimon.adminIds : selectedMonimon?.members?.slice(0, 1) || [];
     const canRegisterGroupPayment = groupAdminIds.includes(activeUser?.id) || fromId === activeUser?.id;
-    if (monimonIdOverride !== "personal" && !canRegisterGroupPayment) {
+    if (!selectedMonimon || !canRegisterGroupPayment) {
       setPaymentError("Solo los administradores del grupo pueden registrar pagos de otros integrantes.");
       return false;
     }
@@ -1187,9 +1461,10 @@ function App() {
     }
 
     const paidIds = parsedManual > 0 && !amountOverride ? [] : debtIds;
+    const paymentId = `payment-${Date.now()}`;
     setPayments((items) => [
       {
-        id: `payment-${Date.now()}`,
+        id: paymentId,
         monimonId: monimonIdOverride,
         fromMemberId: fromId,
         toMemberId: toId,
@@ -1198,6 +1473,7 @@ function App() {
         date: formatISODate(paymentDate),
         detail: paymentReason.trim() || "Pago",
         verifiedByMemberIds: [activeUser.id],
+        registeredByMemberId: activeUser.id,
         verifiedAt: new Date().toISOString(),
         debtIds: paidIds
       },
@@ -1232,9 +1508,10 @@ function App() {
       setPaymentRequests((items) => items.map((item) => (item.id === requestId ? { ...item, approvedByMemberIds } : item)));
       return;
     }
+    const paymentId = `payment-${Date.now()}`;
     setPayments((items) => [
       {
-        id: `payment-${Date.now()}`,
+        id: paymentId,
         monimonId: request.monimonId,
         fromMemberId: request.fromMemberId,
         toMemberId: request.toMemberId,
@@ -1243,6 +1520,7 @@ function App() {
         date: request.date,
         detail: request.detail,
         verifiedByMemberIds: approvedByMemberIds,
+        registeredByMemberId: activeUser.id,
         verifiedAt: new Date().toISOString(),
         requestId: request.id
       },
@@ -1275,9 +1553,10 @@ function App() {
 
   function registerDebt({ fromId, toId, title, category, amount, currency, date, kind = "expense", splitParticipantIds = [], splitMode = "equal", splitAmounts = {}, splitPercentages = {} }) {
     if (!activeUser || !fromId || !toId || !title.trim() || amount <= 0) return false;
+    const debtId = Date.now();
     setDebts((items) => [
       {
-        id: Date.now(),
+        id: debtId,
         monimonId: selectedMonimonId,
         fromMemberId: fromId,
         toMemberId: toId,
@@ -1291,7 +1570,8 @@ function App() {
         currency,
         date: formatISODate(date || todayISO()),
         kind,
-        status: "open"
+        status: "open",
+        registeredByMemberId: activeUser.id
       },
       ...items
     ]);
@@ -1300,7 +1580,7 @@ function App() {
   }
 
   function deleteMonimonFromBackend(monimonId) {
-    if (!monimonId || monimonId === "personal") return Promise.reject(new Error("No se puede eliminar el espacio personal."));
+    if (!monimonId) return Promise.reject(new Error("Falta el grupo a eliminar."));
     if (!session?.accessToken) return Promise.reject(new Error("Necesitás iniciar sesión para eliminar un grupo en la base de datos."));
     return apiRequest("/api/monimons/delete", {
       method: "POST",
@@ -1311,12 +1591,12 @@ function App() {
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-app text-milk">
+      <main className="min-h-screen inicio-screen" data-theme={appTheme}>
         <div className="ambient" />
         <section className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-10 px-4 py-8 lg:grid-cols-[1fr_430px] lg:px-8">
           <div className="brand-copy">
             <img src="/moni-logo-current.png" alt="moni mon!" className="hero-logo" />
-            <h1>Las cuentas claritas.</h1>
+            <h1>Las cuentas <span>claritas</span>.</h1>
             <p>La app que conserva amistades.</p>
             <div className="hero-mascots">
               <img src="/moni-mascots.png" alt="Mascotas de moni mon!" />
@@ -1349,7 +1629,7 @@ function App() {
 
   if (!activeUser) {
     return (
-      <main className="min-h-screen bg-app text-milk">
+      <main className="min-h-screen inicio-screen" data-theme={appTheme}>
         <div className="ambient" />
         <section className="mx-auto grid min-h-screen w-full max-w-6xl items-center px-4 py-8">
           <button type="button" className="primary-action login-action" onClick={clearAuthSession}>
@@ -1362,7 +1642,7 @@ function App() {
 
   if (!stateHydrated) {
     return (
-      <BackendWakeScreen elapsed={backendWakeElapsed} />
+      <BackendWakeScreen elapsed={backendWakeElapsed} appTheme={appTheme} />
     );
   }
 
@@ -1371,6 +1651,7 @@ function App() {
       <BackendWakeScreen
         elapsed={backendWakeElapsed}
         failed
+        appTheme={appTheme}
         onRetry={() => {
           setStateHydrated(false);
           setStateLoadFailed(false);
@@ -1394,6 +1675,8 @@ function App() {
       setPayments={setPayments}
       paymentRequests={paymentRequests}
       setPaymentRequests={setPaymentRequests}
+      activityLog={activityLog}
+      recordActivity={recordActivity}
       contacts={contacts}
       setContacts={setContacts}
       approvePaymentRequest={approvePaymentRequest}
@@ -1416,6 +1699,8 @@ function App() {
       setShowNewDebt={setShowNewDebt}
       selectedMonimonId={selectedMonimonId}
       setSelectedMonimonId={setSelectedMonimonId}
+      monimonMembers={monimonMembers}
+      setMonimonMembers={setMonimonMembers}
       monimons={monimonOptions}
       replaceMonimons={replaceMonimonsFromOptions}
       showCreateMonimon={showCreateMonimon}
@@ -1436,8 +1721,6 @@ function App() {
       setEditingPayment={setEditingPayment}
       sideNavCollapsed={sideNavCollapsed}
       setSideNavCollapsed={setSideNavCollapsed}
-      personalSpaceName={personalSpaceName}
-      setPersonalSpaceName={setPersonalSpaceName}
       updateActiveUser={updateActiveUser}
       registerPayment={registerPayment}
       registerDebt={registerDebt}
@@ -1445,6 +1728,10 @@ function App() {
       saveError={saveError}
       logout={logout}
       deleteAccount={deleteAccount}
+      updateAccountEmail={updateAccountEmail}
+      updateAccountPassword={updateAccountPassword}
+      appTheme={appTheme}
+      setAppTheme={setAppTheme}
     />
   );
 }
@@ -1614,7 +1901,7 @@ function GoogleMark() {
   );
 }
 
-function BackendWakeScreen({ elapsed = 0, failed = false, onRetry }) {
+function BackendWakeScreen({ elapsed = 0, failed = false, onRetry, appTheme = defaultAppTheme }) {
   const progress = failed ? 100 : Math.min(94, 12 + elapsed * 3.6);
   const phase = failed
     ? {
@@ -1637,7 +1924,7 @@ function BackendWakeScreen({ elapsed = 0, failed = false, onRetry }) {
           };
 
   return (
-    <main className="min-h-screen bg-app text-milk">
+    <main className="min-h-screen inicio-screen" data-theme={appTheme}>
       <div className="ambient" />
       <section className={`loading-screen ${failed ? "failed" : ""}`}>
         <img src="/moni-logo-current.png" alt="moni mon!" className="loading-logo" />
@@ -1670,6 +1957,8 @@ function Dashboard({
   setPayments,
   paymentRequests,
   setPaymentRequests,
+  activityLog,
+  recordActivity,
   contacts,
   setContacts,
   approvePaymentRequest,
@@ -1692,6 +1981,8 @@ function Dashboard({
   setShowNewDebt,
   selectedMonimonId,
   setSelectedMonimonId,
+  monimonMembers,
+  setMonimonMembers,
   monimons,
   replaceMonimons,
   showCreateMonimon,
@@ -1712,33 +2003,54 @@ function Dashboard({
   setEditingPayment,
   sideNavCollapsed,
   setSideNavCollapsed,
-  personalSpaceName,
-  setPersonalSpaceName,
   updateActiveUser,
   registerPayment,
   registerDebt,
   deleteMonimonFromBackend,
   saveError,
   logout,
-  deleteAccount
+  deleteAccount,
+  updateAccountEmail,
+  updateAccountPassword,
+  appTheme,
+  setAppTheme
 }) {
   const [toastMessage, setToastMessage] = useState("");
-  const [groupActionsOpen, setGroupActionsOpen] = useState(false);
-  const [appTheme, setAppTheme] = useState(() => window.localStorage.getItem("monimon-theme") || defaultAppTheme);
-  const scopedDebts = debts.filter((debt) => debt.monimonId === selectedMonimonId);
-  const scopedPayments = payments.filter((payment) => payment.monimonId === selectedMonimonId);
-  const scopedPaymentRequests = paymentRequests.filter((request) => request.monimonId === selectedMonimonId);
+  const [groupHubActionsOpen, setGroupHubActionsOpen] = useState(false);
+  const [showJoinMonimon, setShowJoinMonimon] = useState(false);
+  const [showShareMonimon, setShowShareMonimon] = useState(false);
+  const [joinInviteValue, setJoinInviteValue] = useState("");
+  const [joinInviteError, setJoinInviteError] = useState("");
+  const profileAreaRef = useRef(null);
+  const handledInviteRef = useRef("");
+  const incomingContactRequests = contacts.filter((contact) => contact.memberId === activeUser.id && contact.status === "pending");
+  const activeGroups = useMemo(() => monimons.filter((monimon) => {
+    if (!monimon.members.includes(activeUser.id)) return false;
+    const membership = monimonMembers.find((item) => item.monimonId === monimon.id && item.memberId === activeUser.id);
+    return !membership || membership.status === "active";
+  }), [monimons, monimonMembers, activeUser.id]);
+  useEffect(() => {
+    if (selectedMonimonId && !activeGroups.some((monimon) => monimon.id === selectedMonimonId)) {
+      setSelectedMonimonId("");
+    }
+  }, [activeGroups, selectedMonimonId, setSelectedMonimonId]);
+  const selectedMonimon = activeGroups.find((monimon) => monimon.id === selectedMonimonId);
+  const scopedDebts = selectedMonimon ? debts.filter((debt) => debt.monimonId === selectedMonimonId) : [];
+  const scopedPayments = selectedMonimon ? payments.filter((payment) => payment.monimonId === selectedMonimonId) : [];
+  const scopedPaymentRequests = selectedMonimon ? paymentRequests.filter((request) => request.monimonId === selectedMonimonId) : [];
   const openDebts = scopedDebts.filter((debt) => debt.status === "open");
   const openExpenses = openDebts.filter((debt) => debt.kind !== "loan");
   const openLoans = openDebts.filter((debt) => debt.kind === "loan");
-  const currentNavItems = selectedMonimonId === "personal" ? navItems : groupNavItems;
-  const selectedMonimon = monimons.find((monimon) => monimon.id === selectedMonimonId);
+  const currentNavItems = navItems;
   const selectedGroupIconOption = groupIconOptions.find((item) => item.id === selectedMonimon?.icon) || groupIconOptions[0];
   const editingMonimon = editingMonimonId ? monimons.find((monimon) => monimon.id === editingMonimonId) : null;
-  const personalMembers = activeUser ? [activeUser] : [];
-  const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : personalMembers;
-  const isMonimonMode = selectedMonimonId !== "personal";
-  const shareUrl = `${window.location.origin}${window.location.pathname}#monimon=${selectedMonimonId}`;
+  const selectedAdminIds = selectedMonimon?.adminIds?.length ? selectedMonimon.adminIds : selectedMonimon?.members?.slice(0, 1) || [];
+  const canManageSelectedGroup = selectedAdminIds.includes(activeUser.id);
+  const memberById = useMemo(() => new Map(appUsers.map((member) => [member.id, member])), [appUsers]);
+  const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => memberById.get(id)).filter(Boolean) : [];
+  const shareBaseUrl = PUBLIC_APP_URL || `${window.location.origin}${window.location.pathname}`;
+  const shareCode = selectedMonimon ? inviteCodeForMonimon(selectedMonimon) : "";
+  const shareUrl = selectedMonimon ? `${shareBaseUrl}/grupo/${encodeURIComponent(shareCode)}` : "";
   const incomingDebts = openExpenses.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const outgoingDebts = openExpenses.filter((debt) => debtShareFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
   const incomingLoans = openLoans.filter((debt) => debtReceivableFor(debt, activeUser.id, membersForSelectedMonimon) > 0);
@@ -1764,107 +2076,130 @@ function Dashboard({
   const iOwe = summaryByCurrency.ARS.iOwe;
   const selectedDebts = outgoingDebts.filter((debt) => selectedDebtIds.includes(debt.id));
   const selectedTotal = selectedDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, membersForSelectedMonimon), 0);
-  const activeGroups = monimons.filter((monimon) => monimon.members.includes(activeUser.id));
-  const personalScopeGroups = [{ id: "personal", name: personalSpaceName, members: appUsers.map((user) => user.id) }, ...activeGroups];
-  const membersForMonimon = (monimon) => monimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean);
-  const getSummaryDebtMembers = (debt) => {
-    if (isMonimonMode) return membersForSelectedMonimon;
-    const group = personalScopeGroups.find((monimon) => monimon.id === debt.monimonId);
-    return group ? membersForMonimon(group) : appUsers;
-  };
-  const debtInvolvesActiveUser = (debt) => {
-    const groupMembers = getSummaryDebtMembers(debt);
-    return debt.fromMemberId === activeUser.id
-      || debtReceivableFor(debt, activeUser.id, groupMembers) > 0.009
-      || debtShareFor(debt, activeUser.id, groupMembers) > 0.009
-      || expenseParticipantIds(debt, groupMembers).includes(activeUser.id);
-  };
-  const globalGrossExpensesByCurrency = personalScopeGroups.reduce((balances, monimon) => {
-    const groupExpenses = debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind !== "loan" && debtInvolvesActiveUser(debt));
-    return mergeCurrencyBalances(balances, expenseGrossTotalsFor(groupExpenses));
-  }, emptyCurrencyBalances());
-  const globalMyRealExpensesByCurrency = personalScopeGroups.reduce((balances, monimon) => {
-    const groupMembers = monimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean);
-    const groupExpenses = debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind !== "loan" && debtInvolvesActiveUser(debt));
-    const groupMyExpenses = groupExpenses.reduce((totals, debt) => (
-      addCurrencyBalance(totals, debt.currency, debtSplitAmountFor(debt, activeUser.id, groupMembers))
-    ), emptyCurrencyBalances());
-    return mergeCurrencyBalances(balances, groupMyExpenses);
-  }, emptyCurrencyBalances());
-  const globalExpenseTotalsByCurrency = personalScopeGroups.reduce((totals, monimon) => {
-    const groupMembers = monimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean);
-    const groupExpenses = debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind !== "loan" && debtInvolvesActiveUser(debt));
-    const groupPayments = payments.filter((payment) => payment.monimonId === monimon.id);
-    const groupTotals = applyVerifiedPaymentsToTotals(
-      globalExpenseTotalsFor(groupExpenses, activeUser.id, groupMembers),
-      groupPayments,
-      activeUser.id
-    );
-    return mergeCurrencyTotals(totals, groupTotals);
-  }, emptyCurrencyTotals());
-  const globalLoanTotalsByCurrency = personalScopeGroups.reduce((totals, monimon) => {
-    const groupMembers = monimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean);
-    const groupLoans = debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind === "loan" && debtInvolvesActiveUser(debt));
-    return groupLoans.reduce((nextTotals, debt) => {
-      if (debt.fromMemberId === activeUser.id) {
-        return addCurrencyTotal(nextTotals, debt.currency, "theyOwe", debtReceivableFor(debt, activeUser.id, groupMembers));
-      }
-      const amount = debtShareFor(debt, activeUser.id, groupMembers);
-      return amount > 0 ? addCurrencyTotal(nextTotals, debt.currency, "iOwe", amount) : nextTotals;
-    }, totals);
-  }, emptyCurrencyTotals());
-  const globalSummaryByCurrency = mergeCurrencyTotals(globalExpenseTotalsByCurrency, globalLoanTotalsByCurrency);
-  const summaryDetailExpenses = isMonimonMode
-    ? openExpenses
-    : personalScopeGroups.flatMap((monimon) => debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind !== "loan" && debtInvolvesActiveUser(debt)));
-  const summaryDetailGroups = isMonimonMode
+  const getSummaryDebtMembers = () => membersForSelectedMonimon;
+  const summaryDetailExpenses = openExpenses;
+  const summaryDetailGroups = selectedMonimon
     ? [{ id: selectedMonimonId, expenses: openExpenses, payments: scopedPayments, members: membersForSelectedMonimon }]
-    : personalScopeGroups.map((monimon) => ({
-        id: monimon.id,
-        expenses: debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debt.kind !== "loan" && debtInvolvesActiveUser(debt)),
-        payments: payments.filter((payment) => payment.monimonId === monimon.id),
-        members: membersForMonimon(monimon)
-      }));
-  const paymentPanelSettlementGroups = isMonimonMode
-    ? [{ id: selectedMonimonId, name: selectedMonimon?.name || "Grupo", debts: openDebts, payments: scopedPayments, members: membersForSelectedMonimon }]
-    : personalScopeGroups.map((monimon) => ({
-        id: monimon.id,
-        name: monimon.name,
-        debts: debts.filter((debt) => debt.monimonId === monimon.id && debt.status === "open" && debtInvolvesActiveUser(debt)),
-        payments: payments.filter((payment) => payment.monimonId === monimon.id),
-        members: membersForMonimon(monimon)
-      }));
+    : [];
+  const paymentPanelSettlementGroups = selectedMonimon
+    ? [{ id: selectedMonimonId, name: selectedMonimon.name || "Grupo", debts: openDebts, payments: scopedPayments, members: membersForSelectedMonimon }]
+    : [];
   const paymentPanelDebts = paymentPanelSettlementGroups.flatMap((group) => group.debts);
-  const personalIncomingDebts = paymentPanelDebts.filter((debt) => debt.kind !== "loan" && debtReceivableFor(debt, activeUser.id, getSummaryDebtMembers(debt)) > 0.009);
-  const personalOutgoingDebts = paymentPanelDebts.filter((debt) => debt.kind !== "loan" && debtShareFor(debt, activeUser.id, getSummaryDebtMembers(debt)) > 0.009);
-  const paymentPanelPendingDebts = isMonimonMode
-    ? outgoingDebts
-    : paymentPanelSettlementGroups.flatMap((group) => (
-        group.debts.filter((debt) => debt.kind !== "loan" && debtShareFor(debt, activeUser.id, group.members) > 0)
-      ));
-  const paymentPanelPayments = isMonimonMode
-    ? scopedPayments
-    : personalScopeGroups.flatMap((monimon) => payments.filter((payment) => payment.monimonId === monimon.id));
-  const historyDebts = isMonimonMode ? scopedDebts : paymentPanelDebts;
-  const historyPayments = isMonimonMode ? scopedPayments : paymentPanelPayments;
+  const paymentPanelPendingDebts = outgoingDebts;
+  const paymentPanelPayments = scopedPayments;
+  const historyDebts = scopedDebts;
+  const historyPayments = scopedPayments;
+  const historyActivityLog = activityLog.filter((item) => item.monimonId === selectedMonimonId);
+
+  function acceptGroupInvite(inviteToken, { quiet = false } = {}) {
+    if (!inviteToken || !activeUser?.id) {
+      return { ok: false, error: "Pegá un link o código de invitación." };
+    }
+    const normalizedInviteToken = normalizedSearch(inviteToken);
+    const group = monimons.find((monimon) => (
+      normalizedSearch(inviteCodeForMonimon(monimon)) === normalizedInviteToken
+    ));
+    if (!group) {
+      if (!quiet) window.alert("No encontré ese grupo. Revisá que el link o código esté completo.");
+      return { ok: false, error: "No encontré ese grupo. Revisá que el link o código esté completo." };
+    }
+    const membership = monimonMembers.find((item) => item.monimonId === group.id && item.memberId === activeUser.id && item.status !== "removed");
+    if (membership?.status === "active") {
+      setSelectedMonimonId(group.id);
+      setShowJoinMonimon(false);
+      window.localStorage.removeItem(pendingInviteStorageKey);
+      if (!quiet) {
+        setToastMessage(`Ya estás en ${group.name}.`);
+        window.setTimeout(() => setToastMessage(""), 2200);
+      }
+      return { ok: true, group };
+    }
+    if (membership?.status === "pending") {
+      setMonimonMembers((items) => items.map((item) => (
+        item.monimonId === group.id && item.memberId === activeUser.id
+          ? { ...item, status: "active", linkedAt: new Date().toISOString() }
+          : item
+      )));
+      recordActivity?.({
+        monimonId: group.id,
+        memberId: activeUser.id,
+        activity: "Aceptación de invitación al grupo",
+        destination: group.name
+      });
+      setSelectedMonimonId(group.id);
+      setShowJoinMonimon(false);
+      window.localStorage.removeItem(pendingInviteStorageKey);
+      setToastMessage(`Te uniste a ${group.name}.`);
+      window.setTimeout(() => setToastMessage(""), 2200);
+      return { ok: true, group };
+    }
+    replaceMonimons(monimons.map((monimon) => (
+      monimon.id === group.id
+        ? { ...monimon, members: [...new Set([...(monimon.members || []), activeUser.id])] }
+        : monimon
+    )));
+    recordActivity?.({
+      monimonId: group.id,
+      memberId: activeUser.id,
+      activity: "Agregado de integrante",
+      destination: userLabel(activeUser.id, appUsers),
+      destinationMemberId: activeUser.id
+    });
+    setSelectedMonimonId(group.id);
+    setShowJoinMonimon(false);
+    window.localStorage.removeItem(pendingInviteStorageKey);
+    setToastMessage(`Te uniste a ${group.name}.`);
+    window.setTimeout(() => setToastMessage(""), 2200);
+    return { ok: true, group };
+  }
+
+  useEffect(() => {
+    const inviteToken = inviteTokenFromText(window.location.href) || window.localStorage.getItem(pendingInviteStorageKey) || "";
+    if (!inviteToken || handledInviteRef.current === inviteToken) return;
+    const result = acceptGroupInvite(inviteToken, { quiet: true });
+    if (result.ok) handledInviteRef.current = inviteToken;
+  }, [activeUser?.id, monimons, monimonMembers]);
+
+  useEffect(() => {
+    function closeFloatingMenus(event) {
+      if (profileAreaRef.current && !profileAreaRef.current.contains(event.target)) {
+        setProfileMenuOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", closeFloatingMenus);
+    return () => document.removeEventListener("pointerdown", closeFloatingMenus);
+  }, [setProfileMenuOpen]);
 
   function closeMonimonModals() {
     setEditingMonimonId(null);
     setShowCreateMonimon(false);
-    setGroupActionsOpen(false);
+    setShowJoinMonimon(false);
+    setShowShareMonimon(false);
+    setGroupHubActionsOpen(false);
+  }
+
+  function openCreateGroup() {
+    setEditingMonimonId(null);
+    setShowCreateMonimon(true);
+    setGroupHubActionsOpen(false);
   }
 
   function joinGroupFromInvite() {
-    const value = window.prompt("Pegá el link o código de invitación");
-    if (!value) return;
-    const match = value.match(/monimon=([^&]+)/);
-    const monimonId = match ? decodeURIComponent(match[1]) : value.trim();
-    if (monimons.some((monimon) => monimon.id === monimonId)) {
-      setSelectedMonimonId(monimonId);
-      setGroupActionsOpen(false);
+    setJoinInviteValue("");
+    setJoinInviteError("");
+    setShowJoinMonimon(true);
+    setGroupHubActionsOpen(false);
+  }
+
+  function submitJoinGroupInvite(event) {
+    event.preventDefault();
+    const result = acceptGroupInvite(inviteTokenFromText(joinInviteValue));
+    if (result.ok) {
+      setJoinInviteValue("");
+      setJoinInviteError("");
       return;
     }
-    window.alert("No encontré ese grupo en tu cuenta.");
+    setJoinInviteError(result.error);
   }
 
   function addContact(memberId) {
@@ -1883,6 +2218,13 @@ function Dashboard({
         ...items
       ];
     });
+    recordActivity?.({
+      monimonId: "personal",
+      memberId: activeUser.id,
+      activity: "Solicitud de amistad enviada",
+      destination: userLabel(memberId, appUsers),
+      destinationMemberId: memberId
+    });
   }
 
   function removeContact(memberId) {
@@ -1894,10 +2236,102 @@ function Dashboard({
     )));
   }
 
+  function approveContactRequest(ownerProfileId) {
+    if (!activeUser || !ownerProfileId) return;
+    const now = new Date().toISOString();
+    setContacts((items) => {
+      const nextItems = items.map((item) => (
+        (item.ownerProfileId === ownerProfileId && item.memberId === activeUser.id)
+          || (item.ownerProfileId === activeUser.id && item.memberId === ownerProfileId)
+          ? { ...item, status: "active", acceptedAt: item.acceptedAt || now }
+          : item
+      ));
+      const hasMirror = nextItems.some((item) => item.ownerProfileId === activeUser.id && item.memberId === ownerProfileId && item.status !== "removed");
+      return hasMirror
+        ? nextItems
+        : [
+            {
+              id: contactKey(activeUser.id, ownerProfileId),
+              ownerProfileId: activeUser.id,
+              memberId: ownerProfileId,
+              status: "active",
+              createdAt: now,
+              acceptedAt: now
+            },
+            ...nextItems
+          ];
+    });
+    recordActivity?.({
+      monimonId: "personal",
+      memberId: activeUser.id,
+      activity: "Aceptación de solicitud de amistad",
+      destination: userLabel(ownerProfileId, appUsers),
+      destinationMemberId: ownerProfileId
+    });
+  }
+
+  function rejectContactRequest(ownerProfileId) {
+    if (!activeUser || !ownerProfileId) return;
+    setContacts((items) => items.map((item) => (
+      item.ownerProfileId === ownerProfileId && item.memberId === activeUser.id
+        ? { ...item, status: "removed", rejectedAt: new Date().toISOString() }
+        : item
+    )));
+  }
+
   function saveEditedDebt({ id, title, category, amount, currency, date, fromMemberId, toMemberId, kind, splitParticipantIds, splitMode, splitAmounts, splitPercentages }) {
     const parsedAmount = parseAmountInput(amount);
     if (!title.trim() || parsedAmount <= 0) return;
+    const previousDebt = debts.find((item) => item.id === id);
+    const nextDebt = previousDebt
+      ? {
+          ...previousDebt,
+          title: title.trim(),
+          category: category || previousDebt.category || "general",
+          splitParticipantIds: splitParticipantIds || previousDebt.splitParticipantIds || [],
+          splitMode: splitMode || previousDebt.splitMode || "equal",
+          splitAmounts: splitAmounts || previousDebt.splitAmounts || {},
+          splitPercentages: splitPercentages || previousDebt.splitPercentages || {},
+          amount: parsedAmount,
+          currency,
+          date,
+          fromMemberId,
+          toMemberId,
+          kind: kind || previousDebt.kind || "expense"
+        }
+      : null;
     setDebts((items) => items.map((item) => (item.id === id ? { ...item, title: title.trim(), category: category || item.category || "general", splitParticipantIds: splitParticipantIds || item.splitParticipantIds || [], splitMode: splitMode || item.splitMode || "equal", splitAmounts: splitAmounts || item.splitAmounts || {}, splitPercentages: splitPercentages || item.splitPercentages || {}, amount: parsedAmount, currency, date, fromMemberId, toMemberId, kind: kind || item.kind || "expense" } : item)));
+    const changedFields = previousDebt && nextDebt
+      ? [
+          previousDebt.title !== nextDebt.title ? "NOMBRE" : null,
+          Number(previousDebt.amount) !== Number(nextDebt.amount) || (previousDebt.currency || "ARS") !== (nextDebt.currency || "ARS") ? "IMPORTE" : null,
+          (previousDebt.category || "general") !== (nextDebt.category || "general") ? "CATEGORÍA" : null,
+          debtDateKey(previousDebt) !== debtDateKey(nextDebt) ? "FECHA" : null,
+          previousDebt.fromMemberId !== nextDebt.fromMemberId
+            || previousDebt.toMemberId !== nextDebt.toMemberId
+            || (previousDebt.kind || "expense") !== (nextDebt.kind || "expense")
+            || (previousDebt.splitMode || "equal") !== (nextDebt.splitMode || "equal")
+            || !sameCanonicalValue(previousDebt.splitParticipantIds || [], nextDebt.splitParticipantIds || [])
+            || !sameCanonicalValue(previousDebt.splitAmounts || {}, nextDebt.splitAmounts || {})
+            || !sameCanonicalValue(previousDebt.splitPercentages || {}, nextDebt.splitPercentages || {})
+            ? "AJUSTE"
+            : null
+        ].filter(Boolean)
+      : [];
+    const members = getSummaryDebtMembers(previousDebt);
+    const previousNet = previousDebt ? expenseNetFor(previousDebt, activeUser.id, members) : 0;
+    const nextNet = nextDebt ? expenseNetFor(nextDebt, activeUser.id, members) : 0;
+    recordActivity?.({
+      monimonId: previousDebt?.monimonId || selectedMonimonId,
+      memberId: activeUser.id,
+      activity: `${nextDebt?.kind === "loan" ? "Modificación de préstamo" : "Modificación de gasto"}${changedFields.length ? `: ${changedFields.join(", ")}` : ""}`,
+      amount: parsedAmount,
+      currency,
+      destination: toMemberId === "group" ? "GRUPO" : userLabel(toMemberId, appUsers),
+      destinationMemberId: toMemberId === "group" ? "" : toMemberId,
+      targetMemberId: fromMemberId,
+      balanceDelta: nextDebt?.kind === "loan" ? 0 : nextNet - previousNet
+    });
     setEditingDebt(null);
   }
 
@@ -1905,6 +2339,15 @@ function Dashboard({
     if (!window.confirm(`Eliminar ${debt.title}?`)) return;
     setDebts((items) => items.filter((item) => item.id !== debt.id));
     setSelectedDebtIds((items) => items.filter((id) => id !== debt.id));
+    recordActivity?.({
+      monimonId: debt.monimonId,
+      memberId: activeUser.id,
+      activity: debt.kind === "loan" ? "Eliminación de préstamo" : "Eliminación de gasto",
+      amount: debt.amount,
+      currency: debt.currency,
+      destination: debt.toMemberId === "group" ? "GRUPO" : userLabel(debt.toMemberId, appUsers),
+      destinationMemberId: debt.toMemberId === "group" ? "" : debt.toMemberId
+    });
   }
 
   function repeatDebt(debt) {
@@ -1914,7 +2357,8 @@ function Dashboard({
         ...debt,
         id: Date.now(),
         date: formatISODate(todayISO()),
-        status: "open"
+        status: "open",
+        registeredByMemberId: activeUser.id
       },
       ...items
     ]);
@@ -1923,13 +2367,34 @@ function Dashboard({
   function saveEditedPayment({ id, detail, amount }) {
     const parsedAmount = parseAmountInput(amount);
     if (!detail.trim() || parsedAmount <= 0) return;
+    const previousPayment = payments.find((item) => item.id === id);
     setPayments((items) => items.map((item) => (item.id === id ? { ...item, detail: detail.trim(), amount: parsedAmount } : item)));
+    if (previousPayment) {
+      recordActivity?.({
+        monimonId: previousPayment.monimonId,
+        memberId: activeUser.id,
+        activity: "Modificación de pago",
+        amount: parsedAmount,
+        currency: previousPayment.currency,
+        destination: userLabel(previousPayment.toMemberId, appUsers),
+        destinationMemberId: previousPayment.toMemberId
+      });
+    }
     setEditingPayment(null);
   }
 
   function deletePayment(payment) {
     if (!window.confirm(`Eliminar ${payment.detail}?`)) return;
     setPayments((items) => items.filter((item) => item.id !== payment.id));
+    recordActivity?.({
+      monimonId: payment.monimonId,
+      memberId: activeUser.id,
+      activity: "Eliminación de registro de pago",
+      amount: payment.amount,
+      currency: payment.currency,
+      destination: userLabel(payment.toMemberId, appUsers),
+      destinationMemberId: payment.toMemberId
+    });
   }
 
   async function deleteMonimon(monimon) {
@@ -1940,13 +2405,20 @@ function Dashboard({
     if (!confirmed) return false;
     try {
       await deleteMonimonFromBackend(monimon.id);
+      recordActivity?.({
+        monimonId: monimon.id,
+        memberId: activeUser.id,
+        activity: "Eliminación del grupo",
+        destination: monimon.name
+      });
       closeMonimonModals();
       replaceMonimons(monimons.filter((item) => item.id !== monimon.id));
       setDebts((items) => items.filter((item) => item.monimonId !== monimon.id));
       setPayments((items) => items.filter((item) => item.monimonId !== monimon.id));
       setPaymentRequests((items) => items.filter((item) => item.monimonId !== monimon.id));
       setSelectedDebtIds([]);
-      setSelectedMonimonId("personal");
+      setActiveView("resumen");
+      setSelectedMonimonId("");
       return true;
     } catch (error) {
       window.alert(error.message || "No se pudo eliminar el grupo en la base de datos.");
@@ -1954,7 +2426,59 @@ function Dashboard({
     }
   }
 
+  const agendaInviteMembers = contacts
+    .filter((contact) => contact.ownerProfileId === activeUser.id && contact.status === "active")
+    .map((contact) => appUsers.find((member) => member.id === contact.memberId))
+    .filter((member) => member && member.id !== activeUser.id)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+
+  function inviteAgendaMemberToGroup(memberId) {
+    if (!selectedMonimon || !memberId) return;
+    if (!canManageSelectedGroup) {
+      setToastMessage("Solo un administrador puede invitar integrantes desde Agenda.");
+      window.setTimeout(() => setToastMessage(""), 2200);
+      return;
+    }
+    const memberName = userLabel(memberId, appUsers);
+    if (selectedMonimon.members.includes(memberId)) {
+      setToastMessage(`${memberName} ya está en ${selectedMonimon.name}.`);
+      window.setTimeout(() => setToastMessage(""), 2200);
+      return;
+    }
+    const now = new Date().toISOString();
+    replaceMonimons(monimons.map((monimon) => (
+      monimon.id === selectedMonimon.id
+        ? { ...monimon, members: [...new Set([...(monimon.members || []), memberId])] }
+        : monimon
+    )));
+    setMonimonMembers((items) => [
+      ...items.filter((item) => !(item.monimonId === selectedMonimon.id && item.memberId === memberId)),
+      {
+        monimonId: selectedMonimon.id,
+        memberId,
+        status: "pending",
+        source: "agenda",
+        invitedByMemberId: activeUser.id,
+        createdAt: now
+      }
+    ]);
+    recordActivity?.({
+      monimonId: selectedMonimon.id,
+      memberId: activeUser.id,
+      activity: "Invitación de integrante",
+      destination: memberName,
+      destinationMemberId: memberId
+    });
+    setToastMessage(`Invitaste a ${memberName}.`);
+    window.setTimeout(() => setToastMessage(""), 2200);
+  }
+
   async function shareMonimon() {
+    if (!selectedMonimon) return;
+    setShowShareMonimon(true);
+  }
+
+  async function copyShareUrl() {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setToastMessage("Link de grupo copiado.");
@@ -1964,46 +2488,69 @@ function Dashboard({
     }
   }
 
-  useEffect(() => {
-    window.localStorage.setItem("monimon-theme", appTheme);
-  }, [appTheme]);
+  function shareMonimonByWhatsapp() {
+    const text = `Sumate al grupo ${selectedMonimon?.name || "MONI MON!"}: ${shareUrl}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <main className="min-h-screen bg-app text-milk" data-theme={appTheme}>
       <div className="ambient" />
-      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-4 lg:px-6">
-        <header className="topbar">
-          <div className="flex items-center gap-3">
-            <label className="theme-switcher" title="Probar tema visual">
-              <Palette size={16} />
-              <select value={appTheme} onChange={(event) => setAppTheme(event.target.value)} aria-label="Tema visual">
-                {appThemes.map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
-              </select>
-            </label>
-            <button
-              type="button"
-              className={`header-contacts-btn ${showContacts ? "active" : ""}`}
-              onClick={() => setShowContacts(true)}
-            >
-              <BookUser size={18} /> Contactos
-            </button>
-            <div className="profile-area">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 pt-4 lg:px-6">
+        <header className={`topbar ${selectedMonimon ? "with-workspace" : ""} ${sideNavCollapsed ? "nav-collapsed-topbar" : ""}`}>
+          {!selectedMonimon && (
+            <img src="/moni-logo-current.png" alt="moni mon!" className="topbar-logo" />
+          )}
+          {selectedMonimon && (
+            <div className="topbar-workspace">
+              <div className="workspace-select-row">
+                <span className="workspace-group-icon" title={selectedGroupIconOption.label}>
+                  {selectedGroupIconOption.emoji}
+                </span>
+                <h1 className="workspace-group-title">{selectedMonimon.name}</h1>
+                {canManageSelectedGroup && (
+                  <button
+                    type="button"
+                    className="edit-monimon-btn"
+                    onClick={() => {
+                      setShowCreateMonimon(false);
+                      setEditingMonimonId(selectedMonimon.id);
+                    }}
+                    aria-label="Configurar grupo"
+                  >
+                    <Settings size={16} />
+                  </button>
+                )}
+                <button type="button" className="share-monimon-btn" onClick={shareMonimon} aria-label="Compartir grupo">
+                  <Share2 size={17} />
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="topbar-actions flex items-center gap-3">
+            <div className="profile-area" ref={profileAreaRef}>
               <button type="button" className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)}>
                 <Avatar user={activeUser} />
-                <span>{activeUser.name}</span>
+                <span>{shortDisplayName(activeUser.name)}</span>
+                <ChevronDown size={16} className="profile-trigger-chevron" />
               </button>
               {profileMenuOpen && (
                 <ProfileMenu
                   activeUser={activeUser}
+                  appTheme={appTheme}
+                  appThemes={appThemes}
+                  setAppTheme={setAppTheme}
                   setProfileModal={setProfileModal}
                   setProfileMenuOpen={setProfileMenuOpen}
+                  setShowContacts={setShowContacts}
                 />
               )}
             </div>
           </div>
         </header>
 
-        <div className={`app-layout ${sideNavCollapsed ? "nav-collapsed" : ""}`}>
+        <div className={`app-layout ${sideNavCollapsed ? "nav-collapsed" : ""} ${!selectedMonimon ? "group-space-layout" : ""}`}>
+          {selectedMonimon && (
           <aside className="side-nav">
             <div className="side-nav-header">
               <img src="/moni-logo-current.png" alt="moni mon!" className="app-logo nav-logo-full" />
@@ -2015,109 +2562,70 @@ function Dashboard({
             <div className="side-actions">
               <button
                 type="button"
-                className="create-monimon-btn side-create-monimon-btn"
-                onClick={() => setGroupActionsOpen((open) => !open)}
-                aria-expanded={groupActionsOpen}
-                aria-label="Nuevo grupo"
+                className="create-monimon-btn side-create-monimon-btn side-back-to-groups-btn"
+                onClick={() => setSelectedMonimonId("")}
+                aria-label="Volver a mis grupos"
               >
-                <Plus size={17} /> <span>NUEVO GRUPO</span>
+                <ChevronLeft size={17} /> <span>VOLVER</span>
               </button>
-              {groupActionsOpen && (
-                <div className="group-action-menu side-group-action-menu">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingMonimonId(null);
-                      setShowCreateMonimon(true);
-                      setGroupActionsOpen(false);
-                    }}
-                  >
-                    Crear
-                  </button>
-                  <button type="button" onClick={joinGroupFromInvite}>
-                    Unirme
-                  </button>
-                </div>
-              )}
             </div>
             {currentNavItems.map((item) => <NavButton key={item.id} item={item} active={activeView === item.id} setActiveView={setActiveView} />)}
           </aside>
+          )}
 
           <section className="content-area">
-            <div className="workspace-bar">
-              <div className="workspace-main">
-                <div className="workspace-select-row">
-                  <span className={`workspace-group-icon ${selectedMonimon ? "" : "workspace-personal-icon"}`.trim()} title={selectedMonimon ? selectedGroupIconOption.label : "Personal"}>
-                    {selectedMonimon ? selectedGroupIconOption.emoji : <Avatar user={activeUser} />}
-                  </span>
-                  <select value={selectedMonimonId} onChange={(event) => setSelectedMonimonId(event.target.value)} aria-label="Seleccionar grupo o espacio">
-                    <option value="personal">{personalSpaceName.toUpperCase()}</option>
-                    {monimons.map((monimon) => <option key={monimon.id} value={monimon.id}>{monimon.name}</option>)}
-                  </select>
-                  {selectedMonimonId === "personal" && (
-                    <button
-                      type="button"
-                      className="edit-monimon-btn"
-                      onClick={() => setProfileModal("personal-space")}
-                      aria-label="Editar espacio personal"
-                    >
-                      <Settings size={16} />
-                    </button>
-                  )}
-                  {selectedMonimon && (
-                    <button
-                      type="button"
-                      className="edit-monimon-btn"
-                      onClick={() => {
-                        setShowCreateMonimon(false);
-                        setEditingMonimonId(selectedMonimon.id);
-                      }}
-                      aria-label="Configurar grupo"
-                    >
-                      <Settings size={16} />
-                    </button>
-                  )}
-                  {selectedMonimon && (
-                    <button type="button" className="share-monimon-btn" onClick={shareMonimon} aria-label="Compartir grupo">
-                      <Share2 size={17} />
-                    </button>
-                  )}
-                </div>
-                <div className="workspace-people">
-                  {membersForSelectedMonimon.map((member) => <span key={member.id}>{member.name}</span>)}
-                </div>
+            {selectedMonimon && (
+              <div className="workspace-people workspace-people-strip">
+                {membersForSelectedMonimon.map((member) => <PersonChip key={member.id} color={memberFrameColor(selectedMonimon, member.id)}>{shortDisplayName(member.name)}</PersonChip>)}
               </div>
-            </div>
+            )}
             <div className="dashboard-grid">
               <section className="main-column">
+                {!selectedMonimon ? (
+                  <GroupSpace
+                    groups={activeGroups}
+                    appUsers={appUsers}
+                    groupHubActionsOpen={groupHubActionsOpen}
+                    setGroupHubActionsOpen={setGroupHubActionsOpen}
+                    onEnterGroup={(groupId) => {
+                      setSelectedMonimonId(groupId);
+                      setActiveView("resumen");
+                    }}
+                    onCreateGroup={openCreateGroup}
+                    onJoinGroup={joinGroupFromInvite}
+                  />
+                ) : (
+                  <>
                 {activeView === "resumen" && (
                   <SummaryHeader
                     title="Resumen"
-                    summaryByCurrency={isMonimonMode ? summaryByCurrency : globalSummaryByCurrency}
-                    grossExpensesByCurrency={isMonimonMode ? grossExpensesByCurrency : globalGrossExpensesByCurrency}
-                    myExpensesByCurrency={isMonimonMode ? myRealExpensesByCurrency : globalMyRealExpensesByCurrency}
-                    labels={isMonimonMode ? { gross: "Gastos grupales", balance: "Me deben", debt: "Mi deuda", expenses: "Mis gastos" } : { balance: "Me deben", debt: "Mi deuda", expenses: "Mis gastos" }}
+                    summaryByCurrency={summaryByCurrency}
+                    grossExpensesByCurrency={grossExpensesByCurrency}
+                    myExpensesByCurrency={myRealExpensesByCurrency}
+                    labels={{ gross: "Gastos", balance: "Me deben", debt: "Mi deuda", expenses: "Mi parte" }}
+                    detailLabels={{ gross: "Gastos", expenses: "Repartos", debt: "Detalle", balance: "Detalle" }}
                     onViewDebt={() => setActiveView("pago")}
                     detailData={{
                       activeUserId: activeUser.id,
                       expenses: summaryDetailExpenses,
                       groups: summaryDetailGroups,
-                      members: isMonimonMode ? membersForSelectedMonimon : appUsers,
+                      members: membersForSelectedMonimon,
+                      memberColors: selectedMonimon.memberColors || {},
                       settlementGroups: paymentPanelSettlementGroups,
                       getDebtMembers: getSummaryDebtMembers
                     }}
                   />
                 )}
                 {activeView === "gastos" && (
-                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} getDebtMembers={getSummaryDebtMembers} incomingDebts={isMonimonMode ? incomingDebts : personalIncomingDebts} outgoingDebts={isMonimonMode ? outgoingDebts : personalOutgoingDebts} incomingTotal={(isMonimonMode ? expenseTotalsByCurrency : globalExpenseTotalsByCurrency).ARS.theyOwe} outgoingTotal={(isMonimonMode ? expenseTotalsByCurrency : globalExpenseTotalsByCurrency).ARS.iOwe} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} onRepeatDebt={repeatDebt} />
+                  <DebtPanel activeUser={activeUser} appUsers={membersForSelectedMonimon} memberColors={selectedMonimon.memberColors || {}} getDebtMembers={getSummaryDebtMembers} listDebts={openExpenses} incomingDebts={incomingDebts} outgoingDebts={outgoingDebts} incomingTotal={expenseTotalsByCurrency.ARS.theyOwe} outgoingTotal={expenseTotalsByCurrency.ARS.iOwe} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} title="Gastos" action="Nuevo gasto" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} onRepeatDebt={repeatDebt} />
                 )}
                 {activeView === "prestamos" && (
-                  <DebtPanel activeUser={activeUser} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} incomingDebts={incomingLoans} outgoingDebts={outgoingLoans} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} isMonimonMode={isMonimonMode} title="Préstamos" action="Nuevo préstamo" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
+                  <DebtPanel activeUser={activeUser} appUsers={membersForSelectedMonimon} memberColors={selectedMonimon.memberColors || {}} listDebts={openLoans} incomingDebts={incomingLoans} outgoingDebts={outgoingLoans} selectedDebtIds={selectedDebtIds} setSelectedDebtIds={setSelectedDebtIds} title="Préstamos" action="Nuevo préstamo" onNewDebt={() => setShowNewDebt(true)} onEditDebt={setEditingDebt} onDeleteDebt={deleteDebt} />
                 )}
-                {activeView === "pagos" && <PaymentsPanel payments={historyPayments} debts={historyDebts} appUsers={isMonimonMode ? membersForSelectedMonimon : appUsers} getDebtMembers={getSummaryDebtMembers} activeUserId={activeUser.id} personalOnly={!isMonimonMode} monimons={monimons} personalSpaceName={personalSpaceName} onEditPayment={setEditingPayment} onDeletePayment={deletePayment} />}
+                {activeView === "pagos" && <PaymentsPanel payments={historyPayments} debts={historyDebts} activityLog={historyActivityLog} appUsers={appUsers} getDebtMembers={getSummaryDebtMembers} activeUserId={activeUser.id} monimons={monimons} onEditPayment={setEditingPayment} onDeletePayment={deletePayment} />}
                 {activeView === "archivo" && (
                   <section className="glass-card panel">
-                    <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} activeUser={activeUser} />
+                    <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} activeUser={activeUser} monimonId={selectedMonimonId} />
                   </section>
                 )}
                 {activeView === "solicitudes" && (
@@ -2125,23 +2633,27 @@ function Dashboard({
                     <PanelTitle icon={<Bell size={18} />} title="Solicitudes" />
                     <RequestsPanel
                       requests={scopedPaymentRequests}
+                      contactRequests={incomingContactRequests}
                       activeUser={activeUser}
                       appUsers={appUsers}
                       selectedMonimon={selectedMonimon}
                       approvePaymentRequest={approvePaymentRequest}
                       rejectPaymentRequest={rejectPaymentRequest}
+                      approveContactRequest={approveContactRequest}
+                      rejectContactRequest={rejectContactRequest}
                     />
                   </section>
                 )}
                 {activeView === "pago" && (
                   <PaymentPanel
+                    appTheme={appTheme}
                     activeUser={activeUser}
                     appUsers={appUsers}
                     selectedMonimon={selectedMonimon}
                     debts={paymentPanelDebts}
                     selectedDebtIds={selectedDebtIds}
                     setSelectedDebtIds={setSelectedDebtIds}
-                    selectedTotal={isMonimonMode ? selectedTotal : paymentPanelPendingDebts.reduce((sum, debt) => sum + debtShareFor(debt, activeUser.id, getSummaryDebtMembers(debt)), 0)}
+                    selectedTotal={selectedTotal}
                     manualAmount={manualAmount}
                     setManualAmount={setManualAmount}
                     paymentCurrency={paymentCurrency}
@@ -2163,6 +2675,8 @@ function Dashboard({
                     registerPayment={registerPayment}
                   />
                 )}
+                  </>
+                )}
               </section>
             </div>
           </section>
@@ -2170,7 +2684,7 @@ function Dashboard({
       </div>
       {toastMessage && <div className="app-toast" role="status">{toastMessage}</div>}
       {saveError && <div className="app-toast app-toast-error" role="alert">{saveError}</div>}
-      <MobileNav activeView={activeView} setActiveView={setActiveView} items={currentNavItems} />
+      {selectedMonimon && <MobileNav activeView={activeView} setActiveView={setActiveView} items={currentNavItems} />}
       {showContacts && (
         <div className="modal-layer">
           <ContactsPanel
@@ -2189,9 +2703,37 @@ function Dashboard({
           appUsers={appUsers}
           setMembers={setMembers}
           monimons={monimons}
+          monimonMembers={monimonMembers}
+          setMonimonMembers={setMonimonMembers}
           replaceMonimons={replaceMonimons}
+          setDebts={setDebts}
+          setPayments={setPayments}
+          setPaymentRequests={setPaymentRequests}
           setSelectedMonimonId={setSelectedMonimonId}
           contacts={contacts}
+          onActivity={recordActivity}
+          onClose={closeMonimonModals}
+        />
+      )}
+      {showJoinMonimon && (
+        <JoinMonimonModal
+          value={joinInviteValue}
+          setValue={setJoinInviteValue}
+          error={joinInviteError}
+          onSubmit={submitJoinGroupInvite}
+          onClose={closeMonimonModals}
+        />
+      )}
+      {showShareMonimon && selectedMonimon && (
+        <ShareMonimonModal
+          group={selectedMonimon}
+          members={agendaInviteMembers}
+          monimonMembers={monimonMembers}
+          canInviteMembers={canManageSelectedGroup}
+          shareUrl={shareUrl}
+          onInviteMember={inviteAgendaMemberToGroup}
+          onCopy={copyShareUrl}
+          onWhatsapp={shareMonimonByWhatsapp}
           onClose={closeMonimonModals}
         />
       )}
@@ -2202,10 +2744,16 @@ function Dashboard({
           setMembers={setMembers}
           monimon={editingMonimon}
           monimons={monimons}
+          monimonMembers={monimonMembers}
+          setMonimonMembers={setMonimonMembers}
           replaceMonimons={replaceMonimons}
+          setDebts={setDebts}
+          setPayments={setPayments}
+          setPaymentRequests={setPaymentRequests}
           setSelectedMonimonId={setSelectedMonimonId}
           onDeleteMonimon={deleteMonimon}
           contacts={contacts}
+          onActivity={recordActivity}
           onClose={closeMonimonModals}
         />
       )}
@@ -2252,17 +2800,11 @@ function Dashboard({
         <SettingsModal
           activeUser={activeUser}
           appUsers={appUsers}
+          contacts={contacts}
           updateActiveUser={updateActiveUser}
-          personalSpaceName={personalSpaceName}
-          setPersonalSpaceName={setPersonalSpaceName}
           deleteAccount={deleteAccount}
-          onClose={() => setProfileModal(null)}
-        />
-      )}
-      {profileModal === "personal-space" && (
-        <PersonalSpaceModal
-          personalSpaceName={personalSpaceName}
-          setPersonalSpaceName={setPersonalSpaceName}
+          updateAccountEmail={updateAccountEmail}
+          updateAccountPassword={updateAccountPassword}
           onClose={() => setProfileModal(null)}
         />
       )}
@@ -2279,7 +2821,7 @@ function Dashboard({
   );
 }
 
-function SummaryHeader({ title = "Resumen", summaryByCurrency, grossExpensesByCurrency, myExpensesByCurrency, labels, detailData, onViewDebt }) {
+function SummaryHeader({ title = "Resumen", summaryByCurrency, grossExpensesByCurrency, myExpensesByCurrency, labels, detailLabels = {}, detailData, onViewDebt }) {
   const [selectedCurrency, setSelectedCurrency] = useState("ARS");
   const [openMetric, setOpenMetric] = useState(null);
   const availableCurrencies = ["ARS", "USD"].filter((currency) => summaryByCurrency[currency]);
@@ -2309,7 +2851,6 @@ function SummaryHeader({ title = "Resumen", summaryByCurrency, grossExpensesByCu
         .filter((detail) => detail.type === "debt")
         .map((detail) => ({ ...detail, id: `${group.id}:${detail.id}` })))
   ));
-
   async function shareSummary() {
     try {
       if (navigator.share) {
@@ -2347,14 +2888,15 @@ function SummaryHeader({ title = "Resumen", summaryByCurrency, grossExpensesByCu
         </label>
       </div>
       <div className="summary-metrics">
-        <Metric id="gross" label={metricLabels.gross} value={grossExpenses} currency={currentCurrency} help={metricHelp.gross} openMetric={openMetric} setOpenMetric={setOpenMetric} />
-        <Metric id="expenses" label={metricLabels.expenses} value={myExpenses} currency={currentCurrency} negative help={metricHelp.expenses} openMetric={openMetric} setOpenMetric={setOpenMetric} />
-        <Metric id="debt" label={metricLabels.debt} value={totals.iOwe} currency={currentCurrency} negative help={metricHelp.debt} openMetric={openMetric} setOpenMetric={setOpenMetric} />
-        <Metric id="balance" label={metricLabels.balance} value={totals.theyOwe} currency={currentCurrency} positive help={metricHelp.balance} openMetric={openMetric} setOpenMetric={setOpenMetric} />
+        <Metric id="gross" label={metricLabels.gross} detailLabel={detailLabels.gross} value={grossExpenses} currency={currentCurrency} neutro help={metricHelp.gross} openMetric={openMetric} setOpenMetric={setOpenMetric} />
+        <Metric id="expenses" label={metricLabels.expenses} detailLabel={detailLabels.expenses} value={myExpenses} currency={currentCurrency} neutro help={metricHelp.expenses} openMetric={openMetric} setOpenMetric={setOpenMetric} />
+        <Metric id="debt" label={metricLabels.debt} detailLabel={detailLabels.debt} value={totals.iOwe} currency={currentCurrency} negative sign="-" help={metricHelp.debt} openMetric={openMetric} setOpenMetric={setOpenMetric} />
+        <Metric id="balance" label={metricLabels.balance} detailLabel={detailLabels.balance} value={totals.theyOwe} currency={currentCurrency} positive sign="+" help={metricHelp.balance} openMetric={openMetric} setOpenMetric={setOpenMetric} />
       </div>
       <SettlementPaySummary
         debts={activeSettlementDebts}
         members={detailData?.members || []}
+        memberColors={detailData?.memberColors || {}}
         currency={currentCurrency}
         onLiquidate={onViewDebt}
         actionLabel="VER DEUDA"
@@ -2387,7 +2929,6 @@ function SummaryMetricDetail({ type, label, currency, detailData }) {
 
 function SummaryGrossDetail({ label, currency, detailData }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterBy, setFilterBy] = useState("");
   const [dateFilter, setDateFilter] = useState("");
   const [memberFilter, setMemberFilter] = useState("");
   const [sortBy, setSortBy] = useState("date-desc");
@@ -2402,6 +2943,7 @@ function SummaryGrossDetail({ label, currency, detailData }) {
         motive: debt.title,
         payer,
         payerId: debt.fromMemberId,
+        payerColor: detailData.memberColors?.[debt.fromMemberId] || "",
         amount: debt.amount
       };
     });
@@ -2409,8 +2951,8 @@ function SummaryGrossDetail({ label, currency, detailData }) {
   const visibleRows = expenseRows
     .filter((row) => {
       const matchesSearch = !normalizedQuery || normalizedSearch(`${row.date} ${displayDate(row.date)} ${row.motive} ${row.payer} ${row.amount}`).includes(normalizedQuery);
-      const matchesDate = filterBy !== "date" || !dateFilter || row.date === dateFilter;
-      const matchesMember = filterBy !== "member" || !memberFilter || row.payerId === memberFilter;
+      const matchesDate = !dateFilter || row.date === dateFilter;
+      const matchesMember = !memberFilter || row.payerId === memberFilter;
       return matchesSearch && matchesDate && matchesMember;
     })
     .sort((a, b) => {
@@ -2422,33 +2964,35 @@ function SummaryGrossDetail({ label, currency, detailData }) {
     });
   const payerOptions = [...new Map(expenseRows.map((row) => [row.payerId, row.payer])).entries()]
     .sort((a, b) => a[1].localeCompare(b[1], "es"));
+  function clearDateFilter() {
+    setDateFilter("");
+  }
 
   return (
     <div className="summary-detail-panel">
       <div className="summary-detail-head gross">
-        <h2>{label}</h2>
-        <div className="summary-detail-tools">
-          <label className="summary-search">
-            <Search size={16} />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar" />
-          </label>
-          <label className="summary-tool-select">
-            <span>Filtrar por</span>
-            <select value={filterBy} onChange={(event) => setFilterBy(event.target.value)}>
-              <option value="">Sin filtro</option>
-              <option value="date">Fecha</option>
-              <option value="member">Integrante</option>
-            </select>
-          </label>
-          {filterBy === "date" && (
-            <input className="summary-filter-input" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Fecha" />
-          )}
-          {filterBy === "member" && (
-            <select className="summary-filter-input" value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)} aria-label="Integrante">
+        <div className="summary-detail-title-row">
+          <h2>{label}</h2>
+          <div className="summary-title-controls">
+            <label className="summary-search">
+              <Search size={16} />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar" />
+            </label>
+            <label className="summary-labeled-control">
+              <span>Integrante</span>
+              <select value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)} aria-label="Filtrar gastos por integrante">
               <option value="">Todos</option>
               {payerOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-            </select>
-          )}
+              </select>
+            </label>
+          </div>
+        </div>
+        <div className="summary-detail-tools">
+          <div className="summary-date-filter">
+            <label htmlFor="summary-gross-date-filter">Filtrar por fecha</label>
+            <input id="summary-gross-date-filter" className="summary-filter-input" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filtrar por fecha" />
+            <button type="button" onClick={clearDateFilter} disabled={!dateFilter} aria-label="Limpiar fecha">x</button>
+          </div>
           <label className="summary-tool-select">
             <span>Ordenar por</span>
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
@@ -2462,9 +3006,11 @@ function SummaryGrossDetail({ label, currency, detailData }) {
         </div>
       </div>
       <SummaryTable
-        columns={["Fecha", "Motivo", "Pagado por", "Importe"]}
+        columns={["Fecha", "Actividad", "Pagado por", "Importe"]}
         rows={visibleRows}
-        renderRow={(row) => [displayDate(row.date), row.motive, row.payer, money(row.amount, currency)]}
+        renderRow={(row) => [displayDate(row.date), row.motive, <PersonChip color={row.payerColor}>{row.payer}</PersonChip>, money(row.amount, currency)]}
+        totalAmount={visibleRows.reduce((sum, row) => sum + row.amount, 0)}
+        currency={currency}
       />
     </div>
   );
@@ -2482,7 +3028,8 @@ function SummarySettlementDetail({ label, currency, detailData, mode }) {
           member: row.member.name,
           amount: detail.amount,
           status: "Pendiente",
-          other: otherMember?.name || "INTEGRANTE"
+          other: otherMember?.name || "INTEGRANTE",
+          otherColor: detailData.memberColors?.[detail.otherMemberId] || ""
         };
       }));
   });
@@ -2496,7 +3043,9 @@ function SummarySettlementDetail({ label, currency, detailData, mode }) {
       <SummaryTable
         columns={columns}
         rows={rows}
-        renderRow={(row) => [mode === "recover" ? row.other : row.other, money(row.amount, currency), row.status]}
+        renderRow={(row) => [<PersonChip color={row.otherColor}>{mode === "recover" ? row.other : row.other}</PersonChip>, money(row.amount, currency), row.status]}
+        totalAmount={rows.reduce((sum, row) => sum + row.amount, 0)}
+        currency={currency}
       />
     </div>
   );
@@ -2504,15 +3053,17 @@ function SummarySettlementDetail({ label, currency, detailData, mode }) {
 
 function SummaryMyExpensesDetail({ label, currency, detailData }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterBy, setFilterBy] = useState("");
   const [dateFilter, setDateFilter] = useState("");
-  const [memberFilter, setMemberFilter] = useState("");
-  const [sortBy, setSortBy] = useState("date-desc");
+  const memberOptions = (detailData.members || []).filter((member) => member?.id);
+  const [selectedMemberId, setSelectedMemberId] = useState(detailData.activeUserId || "group");
+  const expenseMemberId = selectedMemberId === "group" || memberOptions.some((member) => member.id === selectedMemberId)
+    ? selectedMemberId
+    : detailData.activeUserId || "group";
   const expenseRows = (detailData.expenses || [])
     .filter((debt) => debt.currency === currency)
     .map((debt) => {
       const members = detailData.getDebtMembers?.(debt) || detailData.members || [];
-      const amount = debtSplitAmountFor(debt, detailData.activeUserId, members);
+      const amount = expenseMemberId === "group" ? debt.amount : debtSplitAmountFor(debt, expenseMemberId, members);
       return {
         id: debt.id,
         date: debtDateKey(debt),
@@ -2523,72 +3074,59 @@ function SummaryMyExpensesDetail({ label, currency, detailData }) {
       };
     })
     .filter((row) => row.amount > 0.009);
+  function clearDateFilter() {
+    setDateFilter("");
+  }
   const normalizedQuery = normalizedSearch(searchTerm);
   const rows = expenseRows
     .filter((row) => {
       const matchesSearch = !normalizedQuery || normalizedSearch(`${row.date} ${displayDate(row.date)} ${row.motive} ${row.payer} ${row.amount}`).includes(normalizedQuery);
-      const matchesDate = filterBy !== "date" || !dateFilter || row.date === dateFilter;
-      const matchesMember = filterBy !== "member" || !memberFilter || row.payerId === memberFilter;
-      return matchesSearch && matchesDate && matchesMember;
+      const matchesDate = !dateFilter || row.date === dateFilter;
+      return matchesSearch && matchesDate;
     })
     .sort((a, b) => {
-      if (sortBy === "date-asc") return String(a.date).localeCompare(String(b.date));
-      if (sortBy === "member") return a.payer.localeCompare(b.payer, "es");
-      if (sortBy === "amount-desc") return b.amount - a.amount;
-      if (sortBy === "amount-asc") return a.amount - b.amount;
       return String(b.date).localeCompare(String(a.date));
     });
-  const payerOptions = [...new Map(expenseRows.map((row) => [row.payerId, row.payer])).entries()]
-    .sort((a, b) => a[1].localeCompare(b[1], "es"));
 
   return (
     <div className="summary-detail-panel">
       <div className="summary-detail-head gross">
-        <h2>{label}</h2>
+        <div className="summary-detail-title-row">
+          <h2>{label}</h2>
+          <div className="summary-title-controls">
+            <label className="summary-search">
+              <Search size={16} />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar" />
+            </label>
+            <label className="summary-labeled-control">
+              <span>Integrante</span>
+              <select value={expenseMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} aria-label="Ver gasto real de integrante">
+                <option value="group">GRUPO</option>
+                {memberOptions.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+              </select>
+            </label>
+          </div>
+        </div>
         <div className="summary-detail-tools">
-          <label className="summary-search">
-            <Search size={16} />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar" />
-          </label>
-          <label className="summary-tool-select">
-            <span>Filtrar por</span>
-            <select value={filterBy} onChange={(event) => setFilterBy(event.target.value)}>
-              <option value="">Sin filtro</option>
-              <option value="date">Fecha</option>
-              <option value="member">Integrante</option>
-            </select>
-          </label>
-          {filterBy === "date" && (
-            <input className="summary-filter-input" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Fecha" />
-          )}
-          {filterBy === "member" && (
-            <select className="summary-filter-input" value={memberFilter} onChange={(event) => setMemberFilter(event.target.value)} aria-label="Integrante">
-              <option value="">Todos</option>
-              {payerOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-            </select>
-          )}
-          <label className="summary-tool-select">
-            <span>Ordenar por</span>
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-              <option value="date-desc">Fecha más reciente</option>
-              <option value="date-asc">Fecha más antigua</option>
-              <option value="member">Integrante</option>
-              <option value="amount-desc">Importe más alto</option>
-              <option value="amount-asc">Importe más bajo</option>
-            </select>
-          </label>
+          <div className="summary-date-filter">
+            <label htmlFor="summary-expense-date-filter">Filtrar por fecha</label>
+            <input id="summary-expense-date-filter" className="summary-filter-input" type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} aria-label="Filtrar por fecha" />
+            <button type="button" onClick={clearDateFilter} disabled={!dateFilter} aria-label="Limpiar fecha">x</button>
+          </div>
         </div>
       </div>
       <SummaryTable
-        columns={["Fecha", "Motivo", "Importe"]}
+        columns={["Fecha", "Actividad", "Importe"]}
         rows={rows}
         renderRow={(row) => [displayDate(row.date), row.motive, money(row.amount, currency)]}
+        totalAmount={rows.reduce((sum, row) => sum + row.amount, 0)}
+        currency={currency}
       />
     </div>
   );
 }
 
-function SummaryTable({ columns, rows, renderRow }) {
+function SummaryTable({ columns, rows, renderRow, totalAmount = null, currency = "ARS" }) {
   const emptyColSpan = columns.length;
   return (
     <div className="summary-table-wrap">
@@ -2612,11 +3150,19 @@ function SummaryTable({ columns, rows, renderRow }) {
           )}
         </tbody>
       </table>
+      {totalAmount !== null && (
+        <div className="summary-table-total">
+          <span>IMPORTE TOTAL:</span>
+          <strong>{money(totalAmount, currency)}</strong>
+        </div>
+      )}
     </div>
   );
 }
 
-function ProfileMenu({ activeUser, setProfileModal, setProfileMenuOpen }) {
+function ProfileMenu({ activeUser, appTheme, appThemes, setAppTheme, setProfileModal, setProfileMenuOpen, setShowContacts }) {
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+
   function chooseModal(modal) {
     setProfileMenuOpen(false);
     setProfileModal(modal);
@@ -2627,10 +3173,38 @@ function ProfileMenu({ activeUser, setProfileModal, setProfileMenuOpen }) {
       <div className="profile-menu-head">
         <Avatar user={activeUser} />
         <div>
-          <b>{activeUser.name}</b>
+          <b>{shortDisplayName(activeUser.name)}</b>
           <small>{activeUser.role === "admin" ? "Admin" : "Usuario activo"}</small>
         </div>
         {activeUser.role === "admin" && <span className="profile-role-badge"><ShieldCheck size={14} /> Admin</span>}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          setShowContacts(true);
+          setProfileMenuOpen(false);
+        }}
+      >
+        <BookUser size={17} /> Agenda
+      </button>
+      <div className="profile-menu-nested">
+        <button type="button" onClick={() => setThemeMenuOpen((open) => !open)} aria-expanded={themeMenuOpen}>
+          <Palette size={17} /> Tema {themeMenuOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+        </button>
+        {themeMenuOpen && (
+          <div className="profile-theme-options">
+            {appThemes.map((theme) => (
+              <button
+                key={theme.id}
+                type="button"
+                className={theme.id === appTheme ? "active" : ""}
+                onClick={() => setAppTheme(theme.id)}
+              >
+                {theme.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <button type="button" onClick={() => chooseModal("avatar")}><Camera size={17} /> Cambiar avatar</button>
       <button type="button" onClick={() => chooseModal("settings")}><Settings size={17} /> Configuración</button>
@@ -2713,46 +3287,36 @@ function AvatarModal({ activeUser, updateActiveUser, onClose }) {
   );
 }
 
-function PersonalSpaceModal({ personalSpaceName, setPersonalSpaceName, onClose }) {
-  const [spaceName, setSpaceName] = useState(personalSpaceName);
-  const [error, setError] = useState("");
-
-  function savePersonalSpace() {
-    const cleanName = spaceName.trim().slice(0, 32);
-    if (!cleanName) {
-      setError("Ingresá un nombre.");
-      return;
-    }
-    setPersonalSpaceName(cleanName.toUpperCase());
-    onClose();
-  }
-
-  return (
-    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="personal-space-title">
-      <div className="create-modal settings-modal">
-        <div className="modal-head">
-          <h2 id="personal-space-title">Editar Personal</h2>
-          <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
-        </div>
-        <label>Nombre del espacio</label>
-        <input value={spaceName} maxLength={32} onChange={(event) => setSpaceName(event.target.value.toUpperCase())} />
-        {error && <p className="form-error">{error}</p>}
-        <button type="button" className="primary-action modal-create-btn" onClick={savePersonalSpace}>GUARDAR</button>
-      </div>
-    </div>
-  );
-}
-
-function SettingsModal({ activeUser, appUsers, updateActiveUser, personalSpaceName, setPersonalSpaceName, deleteAccount, onClose }) {
+function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, deleteAccount, updateAccountEmail, updateAccountPassword, onClose }) {
   const [username, setUsername] = useState(activeUser.username || usernameFromProfile(activeUser));
-  const [name, setName] = useState(activeUser.name);
-  const [spaceName, setSpaceName] = useState(personalSpaceName);
+  const [name, setName] = useState(shortDisplayName(activeUser.name));
+  const [email, setEmail] = useState(activeUser.email || "");
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [password, setPassword] = useState("");
+  const [editingPassword, setEditingPassword] = useState(false);
+  const [bankAlias, setBankAlias] = useState(activeUser.bankAlias || "");
+  const [bankCbu, setBankCbu] = useState(activeUser.bankCbu || "");
+  const [bankVisibilityMode, setBankVisibilityMode] = useState(activeUser.bankVisibilityMode || "hidden");
+  const [bankVisibleMemberIds, setBankVisibleMemberIds] = useState(Array.isArray(activeUser.bankVisibleMemberIds) ? activeUser.bankVisibleMemberIds : []);
+  const [visibilityMenuOpen, setVisibilityMenuOpen] = useState(false);
   const [error, setError] = useState("");
+  const [accountMessage, setAccountMessage] = useState("");
+  const [accountSaving, setAccountSaving] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const isGoogleAccount = activeUser.authProvider === "google";
+  const agendaContactIds = new Set(
+    (contacts || [])
+      .filter((contact) => contact.ownerProfileId === activeUser.id && contact.status === "active")
+      .map((contact) => contact.memberId)
+  );
+  const visibilityMembers = appUsers
+    .filter((user) => user.id !== activeUser.id && agendaContactIds.has(user.id))
+    .filter(isRegisteredContactCandidate)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
 
   async function saveSettings() {
     const cleanUsername = normalizeUsername(username);
-    const cleanName = name.trim().slice(0, 24);
+    const cleanName = shortDisplayName(name).slice(0, 20);
     if (cleanUsername.length < 3) {
       setError("Elegí un usuario único de al menos 3 caracteres.");
       return;
@@ -2768,9 +3332,69 @@ function SettingsModal({ activeUser, appUsers, updateActiveUser, personalSpaceNa
       setError("Ingresá un apodo.");
       return;
     }
-    updateActiveUser({ name: cleanName.toUpperCase(), username: cleanUsername });
-    setPersonalSpaceName((spaceName.trim() || "PERSONAL").slice(0, 32).toUpperCase());
+    updateActiveUser({
+      name: cleanName,
+      username: cleanUsername,
+      bankAlias: bankAlias.trim(),
+      bankCbu: bankCbu.trim(),
+      bankVisibilityMode,
+      bankVisibleMemberIds: bankVisibilityMode === "selected" ? bankVisibleMemberIds : []
+    });
     onClose();
+  }
+
+  function toggleBankVisibleMember(memberId) {
+    setBankVisibleMemberIds((items) => (
+      items.includes(memberId)
+        ? items.filter((id) => id !== memberId)
+        : [...items, memberId]
+    ));
+  }
+
+  async function saveEmailChange() {
+    if (isGoogleAccount) {
+      setEditingEmail(false);
+      setAccountMessage("");
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      setError("Ingresá un correo válido.");
+      return;
+    }
+    setAccountSaving("email");
+    setError("");
+    setAccountMessage("");
+    try {
+      await updateAccountEmail(cleanEmail);
+      setEditingEmail(false);
+      setAccountMessage("Correo actualizado. Puede requerir confirmación según la configuración de la cuenta.");
+    } catch (updateError) {
+      setError(updateError.message || "No se pudo actualizar el correo.");
+    } finally {
+      setAccountSaving("");
+    }
+  }
+
+  async function savePasswordChange() {
+    if (isGoogleAccount) return;
+    if (password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setAccountSaving("password");
+    setError("");
+    setAccountMessage("");
+    try {
+      await updateAccountPassword(password);
+      setPassword("");
+      setEditingPassword(false);
+      setAccountMessage("Contraseña actualizada.");
+    } catch (updateError) {
+      setError(updateError.message || "No se pudo actualizar la contraseña.");
+    } finally {
+      setAccountSaving("");
+    }
   }
 
   async function confirmDeleteAccount() {
@@ -2793,33 +3417,146 @@ function SettingsModal({ activeUser, appUsers, updateActiveUser, personalSpaceNa
           <h2 id="settings-title">Configuración</h2>
           <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
         </div>
-        <label>Usuario único</label>
-        <input
-          value={username}
-          maxLength={24}
-          onChange={(event) => setUsername(normalizeUsername(event.target.value))}
-          placeholder="usuario.unico"
-        />
-        <p className="settings-hint">
-          Tu usuario público es {displayHandle(username)}. Sirve para que te encuentren, no para iniciar sesión.
-        </p>
-        <label>Apodo visible</label>
-        <input value={name} maxLength={24} onChange={(event) => setName(event.target.value)} />
-        <label>Nombre del espacio personal</label>
-        <input value={spaceName} maxLength={32} onChange={(event) => setSpaceName(event.target.value.toUpperCase())} placeholder="PERSONAL" />
+        <label>Nombre de Usuario</label>
+        <div className="username-input">
+          <span aria-hidden="true">@</span>
+          <input
+            value={username}
+            maxLength={24}
+            onChange={(event) => setUsername(normalizeUsername(event.target.value))}
+            placeholder="usuario.unico"
+          />
+        </div>
+        <p className="settings-hint">Usuario para que te encuentren tus amigos.</p>
+        <label>Nombre visible</label>
+        <input value={name} maxLength={20} onChange={(event) => setName(event.target.value.trim() ? shortDisplayName(event.target.value).slice(0, 20) : "")} />
+        <p className="settings-hint">Nombre visible para tus amigos.</p>
+        <label id="account-access-title">Cuenta y acceso</label>
+        <section className="account-access-section" aria-labelledby="account-access-title">
+          <div className="settings-account-grid">
+            <label className="settings-account-field">
+              <span>Correo</span>
+              <input value={email} disabled={isGoogleAccount || !editingEmail || accountSaving === "email"} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            <button
+              type="button"
+              className="settings-inline-edit"
+              onClick={editingEmail ? saveEmailChange : () => setEditingEmail(true)}
+              disabled={isGoogleAccount || accountSaving === "email"}
+            >
+              {isGoogleAccount ? "Cuenta Google" : accountSaving === "email" ? "Guardando" : editingEmail ? "Guardar correo" : "Editar correo"}
+            </button>
+            <label className="settings-account-field">
+              <span>Contraseña</span>
+              <input
+                value={editingPassword ? password : "********"}
+                disabled={!editingPassword || isGoogleAccount || accountSaving === "password"}
+                type="password"
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="settings-inline-edit"
+              onClick={editingPassword ? savePasswordChange : () => setEditingPassword(true)}
+              disabled={isGoogleAccount || accountSaving === "password"}
+            >
+              {isGoogleAccount ? "Cuenta Google" : accountSaving === "password" ? "Guardando" : editingPassword ? "Guardar contraseña" : "Editar contraseña"}
+            </button>
+          </div>
+          {isGoogleAccount && <p className="settings-hint">Cuenta vinculada con Google.</p>}
+          {accountMessage && <p className="settings-hint">{accountMessage}</p>}
+        </section>
+        <section className="optional-info-section" aria-labelledby="optional-info-title">
+          <h3 id="optional-info-title">INFORMACIÓN OPCIONAL:</h3>
+          <div className="optional-info-grid">
+            <div>
+              <h4>Datos para transferencia bancaria</h4>
+              <label>Alias:</label>
+              <input value={bankAlias} onChange={(event) => setBankAlias(event.target.value)} placeholder="alias.banco" />
+              <label>CBU:</label>
+              <input value={bankCbu} onChange={(event) => setBankCbu(event.target.value.replace(/\D/g, "").slice(0, 22))} placeholder="0000000000000000000000" />
+            </div>
+            <div className="optional-visibility-card">
+              <h4>VISIBILIDAD</h4>
+              <div className="optional-visibility-options">
+                <label className="optional-radio-row">
+                  <input
+                    type="radio"
+                    name="bank-visibility"
+                    checked={bankVisibilityMode === "hidden"}
+                    onChange={() => {
+                      setBankVisibilityMode("hidden");
+                      setVisibilityMenuOpen(false);
+                    }}
+                  />
+                  No mostrar
+                </label>
+                <label className="optional-radio-row">
+                  <input
+                    type="radio"
+                    name="bank-visibility"
+                    checked={bankVisibilityMode === "friends"}
+                    onChange={() => {
+                      setBankVisibilityMode("friends");
+                      setVisibilityMenuOpen(false);
+                    }}
+                  />
+                  Todos mis amigos
+                </label>
+                <div className="optional-checkbox-select">
+                  <label className="optional-radio-row optional-select-radio">
+                    <input
+                      type="radio"
+                      name="bank-visibility"
+                      checked={bankVisibilityMode === "selected"}
+                      onChange={() => {
+                        setBankVisibilityMode("selected");
+                        setVisibilityMenuOpen(true);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="optional-friends-select"
+                      onClick={() => {
+                        setBankVisibilityMode("selected");
+                        setVisibilityMenuOpen((open) => !open);
+                      }}
+                      aria-expanded={bankVisibilityMode === "selected" && visibilityMenuOpen}
+                    >
+                      <span>Seleccionar amigos</span>
+                      <ChevronDown size={16} />
+                    </button>
+                  </label>
+                  {bankVisibilityMode === "selected" && visibilityMenuOpen && (
+                    <div className="optional-check-list">
+                      {visibilityMembers.length ? visibilityMembers.map((member) => (
+                        <label key={member.id} className="optional-check-row">
+                          <input
+                            type="checkbox"
+                            checked={bankVisibleMemberIds.includes(member.id)}
+                            onChange={() => toggleBankVisibleMember(member.id)}
+                          />
+                          {shortDisplayName(member.name)}
+                        </label>
+                      )) : (
+                        <p className="settings-hint">Todavía no tenés amigos registrados en tu agenda.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         {error && <p className="form-error">{error}</p>}
         <button type="button" className="primary-action modal-create-btn" onClick={saveSettings}>GUARDAR</button>
         <section className="sensitive-zone" aria-labelledby="sensitive-zone-title">
           <div>
             <span className="sensitive-icon"><ShieldAlert size={17} /></span>
             <div>
-              <h3 id="sensitive-zone-title">Cuenta y acceso</h3>
-              <p>{activeUser.email}</p>
+              <h3 id="sensitive-zone-title">Zona de riesgo</h3>
             </div>
-          </div>
-          <div className="settings-secondary-actions">
-            <button type="button" disabled>Cambiar correo</button>
-            <button type="button" disabled>Cambiar contraseña</button>
           </div>
           <button type="button" className="delete-account-btn" onClick={confirmDeleteAccount} disabled={deleting}>
             <Trash2 size={16} /> {deleting ? "ELIMINANDO" : "ELIMINAR CUENTA"}
@@ -2848,12 +3585,22 @@ function ConfirmLogoutModal({ onCancel, onConfirm }) {
   );
 }
 
-function ArchivePanel({ files, setFiles, activeUser }) {
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function ArchivePanel({ files, setFiles, activeUser, monimonId }) {
   const [dragging, setDragging] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [galleryGroupBy, setGalleryGroupBy] = useState("uploadedBy");
   const [gallerySortBy, setGallerySortBy] = useState("date-desc");
-  const orderedFiles = [...files].sort((a, b) => {
+  const scopedFiles = files.filter((file) => !file.monimonId || file.monimonId === monimonId);
+  const orderedFiles = [...scopedFiles].sort((a, b) => {
     const dateCompare = String(debtDateKey({ date: a.createdAt })).localeCompare(String(debtDateKey({ date: b.createdAt })));
     return gallerySortBy === "date-asc" ? dateCompare : -dateCompare;
   });
@@ -2871,25 +3618,45 @@ function ArchivePanel({ files, setFiles, activeUser }) {
     return [...groups, { label: groupValue, files: [file] }];
   }, []);
 
-  function addFiles(fileList) {
+  async function addFiles(fileList) {
     const imageFiles = [...fileList].filter((file) => file.type.startsWith("image/"));
     if (!imageFiles.length) return;
-    const nextFiles = imageFiles.map((file) => ({
+    const nextFiles = await Promise.all(imageFiles.map(async (file) => ({
       id: `${file.name}-${file.lastModified}-${crypto.randomUUID()}`,
       name: file.name,
       size: file.size,
-      url: URL.createObjectURL(file),
+      dataUrl: await fileToDataUrl(file),
+      monimonId,
       createdAt: formatISODate(todayISO()),
       uploadedBy: activeUser?.name || "Usuario",
       category: "General"
-    }));
+    })));
     setFiles((items) => [...nextFiles, ...items]);
   }
 
+  function addPastedImages(event) {
+    const clipboardItems = [...(event.clipboardData?.items || [])];
+    const imageFiles = clipboardItems
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter(Boolean)
+      .map((file, index) => new File(
+        [file],
+        file.name && file.name !== "image.png" ? file.name : `captura-portapapeles-${Date.now()}-${index + 1}.png`,
+        { type: file.type || "image/png", lastModified: Date.now() }
+      ));
+    if (!imageFiles.length) return;
+    event.preventDefault();
+    addFiles(imageFiles);
+  }
+
+  useEffect(() => {
+    window.addEventListener("paste", addPastedImages);
+    return () => window.removeEventListener("paste", addPastedImages);
+  });
+
   function deleteFile(fileId) {
     setFiles((items) => {
-      const fileToDelete = items.find((item) => item.id === fileId);
-      if (fileToDelete) URL.revokeObjectURL(fileToDelete.url);
       return items.filter((item) => item.id !== fileId);
     });
     setPreviewFile((file) => (file?.id === fileId ? null : file));
@@ -2900,6 +3667,8 @@ function ArchivePanel({ files, setFiles, activeUser }) {
       <PanelTitle icon={<Archive size={18} />} title="Archivo" />
       <label
         className={`archive-dropzone ${dragging ? "dragging" : ""}`}
+        tabIndex={0}
+        onPaste={addPastedImages}
         onDragOver={(event) => {
           event.preventDefault();
           setDragging(true);
@@ -2912,8 +3681,8 @@ function ArchivePanel({ files, setFiles, activeUser }) {
         }}
       >
         <Upload size={26} />
-        <strong>Arrastrá una imagen o seleccioná desde tu dispositivo</strong>
-        <span>Fotos de tickets, facturas o comprobantes.</span>
+        <strong>Arrastrá, pegá una imagen o seleccioná desde tu dispositivo</strong>
+        <span>Fotos de tickets, facturas, comprobantes o capturas.</span>
         <input type="file" accept="image/*" multiple onChange={(event) => addFiles(event.target.files)} />
       </label>
       <div className="archive-gallery-heading">
@@ -2934,7 +3703,7 @@ function ArchivePanel({ files, setFiles, activeUser }) {
                 {group.files.map((file) => (
                   <article key={file.id} className="archive-card">
                     <button type="button" className="archive-open" onClick={() => setPreviewFile(file)} aria-label={`Abrir ${file.name}`}>
-                      <img src={file.url} alt={file.name} />
+                      <img src={file.dataUrl} alt={file.name} />
                       <span><Maximize2 size={16} /></span>
                     </button>
                     <div className="archive-card-meta">
@@ -2997,7 +3766,7 @@ function ArchivePreviewModal({ file, onClose, onDelete }) {
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar">x</button>
         </div>
-        <img className="archive-preview-image" src={file.url} alt={file.name} />
+        <img className="archive-preview-image" src={file.dataUrl} alt={file.name} />
         <div className="archive-preview-actions">
           <button type="button" className="archive-delete large" onClick={onDelete}>
             <Trash2 size={16} /> Eliminar imagen
@@ -3008,19 +3777,160 @@ function ArchivePreviewModal({ file, onClose, onDelete }) {
   );
 }
 
-function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimons, replaceMonimons, setSelectedMonimonId, onDeleteMonimon, contacts, onClose }) {
+function JoinMonimonModal({ value, setValue, error, onSubmit, onClose }) {
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="join-monimon-title">
+      <form className="create-modal join-monimon-modal" onSubmit={onSubmit}>
+        <div className="modal-head">
+          <h2 id="join-monimon-title">Unirme a grupo</h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+        <section className="monimon-editor-section join-monimon-section">
+          <label htmlFor="join-monimon-invite">
+            Link o código de invitación
+            <input
+              id="join-monimon-invite"
+              value={value}
+              onChange={(event) => setValue(event.target.value)}
+              placeholder="ABC123 o https://monimoni-web.vercel.app/grupo/ABC123"
+              autoFocus
+            />
+          </label>
+          <p>Usá el enlace o código que te compartieron para unirte a un grupo nuevo.</p>
+          {error && <span className="form-error">{error}</span>}
+        </section>
+        <div className="monimon-modal-actions">
+          <button type="button" className="cancel-monimon" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="modal-create-btn">Unirme</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ShareMonimonModal({ group, members, monimonMembers = [], canInviteMembers, shareUrl, onInviteMember, onCopy, onWhatsapp, onClose }) {
+  return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="share-monimon-title">
+      <div className="create-modal share-monimon-modal">
+        <div className="modal-head">
+          <h2 id="share-monimon-title">Compartir grupo</h2>
+          <button type="button" onClick={onClose} aria-label="Cerrar">×</button>
+        </div>
+        <section className="share-monimon-section">
+          <div className="group-heading">
+            <span>Agenda</span>
+          </div>
+          {!canInviteMembers && <p className="share-empty">Solo un administrador puede invitar integrantes desde Agenda.</p>}
+          <div className="share-agenda-list">
+            {members.length ? (
+              members.map((member) => {
+                const membership = monimonMembers.find((item) => item.monimonId === group.id && item.memberId === member.id && item.status !== "removed");
+                const alreadyInGroup = Boolean(membership || group.members.includes(member.id));
+                const isPending = membership?.status === "pending";
+                return (
+                  <div className="share-agenda-row" key={member.id}>
+                    <PersonChip color={memberFrameColor(group, member.id)}>{shortDisplayName(member.name)}</PersonChip>
+                    <button type="button" onClick={() => onInviteMember(member.id)} disabled={!canInviteMembers || alreadyInGroup}>
+                      {isPending ? "Pendiente" : alreadyInGroup ? "En grupo" : "Invitar"}
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="share-empty">Todavía no tenés amigos en tu agenda.</p>
+            )}
+          </div>
+        </section>
+        <section className="share-monimon-section">
+          <div className="group-heading">
+            <span>Enlace de invitación</span>
+          </div>
+          <div className="share-link-row">
+            <input value={shareUrl} readOnly aria-label="Enlace de invitación" />
+            <button type="button" onClick={onCopy}>Copiar</button>
+            <button type="button" className="whatsapp-share-btn" onClick={onWhatsapp} aria-label="Compartir por WhatsApp">
+              <MessageCircle size={17} /> WhatsApp
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function GroupSpace({ groups, appUsers, groupHubActionsOpen, setGroupHubActionsOpen, onEnterGroup, onCreateGroup, onJoinGroup }) {
+  const memberById = new Map(appUsers.map((member) => [member.id, member]));
+  const creatorNameFor = (group) => {
+    const creatorId = group.createdByMemberId || group.adminIds?.[0] || group.members?.[0];
+    return shortDisplayName(memberById.get(creatorId)?.name || creatorId || "USUARIO");
+  };
+  return (
+    <section className="group-space">
+      <div className="group-space-head">
+        <PanelTitle icon={<Home size={20} />} title="MIS GRUPOS" />
+      </div>
+      {groups.length ? (
+        <div className="group-card-grid">
+          {groups.map((group) => {
+            const icon = groupIconOptions.find((item) => item.id === group.icon) || groupIconOptions[0];
+            const members = (group.members || []).map((memberId) => memberById.get(memberId)).filter(Boolean);
+            return (
+              <button type="button" className="group-card" key={group.id} onClick={() => onEnterGroup(group.id)}>
+                <span className="group-card-icon" aria-hidden="true">{icon.emoji}</span>
+                <span className="group-card-main">
+                  <b>{group.name}</b>
+                  <span className="group-card-members">
+                    {members.length
+                      ? members.map((member) => <PersonChip key={member.id} color={memberFrameColor(group, member.id)}>{shortDisplayName(member.name)}</PersonChip>)
+                      : <PersonChip>Sin integrantes</PersonChip>}
+                  </span>
+                  <small>Creado por <strong>{creatorNameFor(group)}</strong></small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="group-space-empty">Todavía no estás en ningún grupo.</p>
+      )}
+      <div className="group-space-actions">
+        <button
+          type="button"
+          className="create-monimon-btn group-space-create-btn"
+          onClick={() => setGroupHubActionsOpen((open) => !open)}
+          aria-expanded={groupHubActionsOpen}
+        >
+          <Plus size={17} /> <span>NUEVO GRUPO</span>
+        </button>
+        {groupHubActionsOpen && (
+          <div className="group-action-menu group-space-action-menu">
+            <button type="button" onClick={onCreateGroup}>Crear</button>
+            <button type="button" onClick={onJoinGroup}>Unirme</button>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimons, monimonMembers = [], setMonimonMembers, replaceMonimons, setDebts, setPayments, setPaymentRequests, setSelectedMonimonId, onDeleteMonimon, contacts, onActivity, onClose }) {
   const [monimonName, setMonimonName] = useState(monimon?.name || "");
   const [groupIcon, setGroupIcon] = useState(monimon?.icon || "home");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState(monimon?.members || [activeUser.id]);
+  const [memberColors, setMemberColors] = useState(monimon?.memberColors || {});
   const [adminIds, setAdminIds] = useState(monimon?.adminIds?.length ? monimon.adminIds : [activeUser.id]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [ghostName, setGhostName] = useState("");
   const [editingGuestId, setEditingGuestId] = useState(null);
   const [editingGuestName, setEditingGuestName] = useState("");
+  const [linkingGuestId, setLinkingGuestId] = useState(null);
+  const [linkTargetId, setLinkTargetId] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [dangerOpen, setDangerOpen] = useState(false);
   const [error, setError] = useState("");
   const isEditing = Boolean(monimon);
+  const canLinkGuests = isEditing && adminIds.includes(activeUser.id);
   const contactMemberIds = new Set(
     (contacts || [])
       .filter((contact) => contact.ownerProfileId === activeUser.id && contact.status !== "removed")
@@ -3032,12 +3942,76 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
     && user.profileId
     && user.memberStatus !== "ghost"
   ));
+  const availableLinkUsers = appUsers.filter((user) => (
+    contactMemberIds.has(user.id)
+    && user.profileId
+    && user.memberStatus !== "ghost"
+    && !memberIds.includes(user.id)
+  ));
+  const membershipByMemberId = new Map(
+    monimonMembers
+      .filter((membership) => membership.monimonId === monimon?.id && membership.status !== "removed")
+      .map((membership) => [membership.memberId, membership])
+  );
+  const memberNameForActivity = (memberId) => displayPersonName(memberId, appUsers);
+  const colorForMember = (memberId) => memberFrameColor({ memberColors }, memberId);
+
+  function cleanMemberColors(colors, ids) {
+    const cleanIds = new Set(ids);
+    return Object.fromEntries(
+      Object.entries(colors || {})
+        .filter(([memberId, color]) => cleanIds.has(memberId) && isHexColor(color))
+    );
+  }
+
+  function updateMemberColor(memberId, color) {
+    setMemberColors((items) => {
+      if (!isHexColor(color)) {
+        const { [memberId]: _removed, ...rest } = items;
+        return rest;
+      }
+      return { ...items, [memberId]: color };
+    });
+  }
+
+  function replaceMemberIdInObject(value, fromId, toId) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+    return Object.fromEntries(Object.entries(value).map(([key, amount]) => [key === fromId ? toId : key, amount]));
+  }
+
+  function replaceMemberIdInRecords(records, fromId, toId) {
+    return records.map((record) => ({
+      ...record,
+      fromMemberId: record.fromMemberId === fromId ? toId : record.fromMemberId,
+      toMemberId: record.toMemberId === fromId ? toId : record.toMemberId,
+      requestedByMemberId: record.requestedByMemberId === fromId ? toId : record.requestedByMemberId,
+      rejectedByMemberId: record.rejectedByMemberId === fromId ? toId : record.rejectedByMemberId,
+      registeredByMemberId: record.registeredByMemberId === fromId ? toId : record.registeredByMemberId,
+      approvedByMemberIds: Array.isArray(record.approvedByMemberIds)
+        ? [...new Set(record.approvedByMemberIds.map((id) => (id === fromId ? toId : id)))]
+        : record.approvedByMemberIds,
+      requiredApproverMemberIds: Array.isArray(record.requiredApproverMemberIds)
+        ? [...new Set(record.requiredApproverMemberIds.map((id) => (id === fromId ? toId : id)))]
+        : record.requiredApproverMemberIds,
+      verifiedByMemberIds: Array.isArray(record.verifiedByMemberIds)
+        ? [...new Set(record.verifiedByMemberIds.map((id) => (id === fromId ? toId : id)))]
+        : record.verifiedByMemberIds,
+      splitParticipantIds: Array.isArray(record.splitParticipantIds)
+        ? [...new Set(record.splitParticipantIds.map((id) => (id === fromId ? toId : id)))]
+        : record.splitParticipantIds,
+      splitAmounts: replaceMemberIdInObject(record.splitAmounts, fromId, toId),
+      splitPercentages: replaceMemberIdInObject(record.splitPercentages, fromId, toId)
+    }));
+  }
 
   function addMember() {
-    const nextMemberId = selectedMemberId || availableUsers[0]?.id;
-    if (!nextMemberId) return;
-    setMemberIds((items) => [...items, nextMemberId]);
+    if (!selectedMemberId) {
+      setError("Seleccioná un contacto.");
+      return;
+    }
+    setMemberIds((items) => [...items, selectedMemberId]);
     setSelectedMemberId("");
+    setError("");
   }
 
   function removeMember(indexToRemove) {
@@ -3054,6 +4028,10 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
       if (!confirmed) return;
     }
     setMemberIds((items) => items.filter((_, index) => index !== indexToRemove));
+    setMemberColors((items) => {
+      const { [memberId]: _removed, ...rest } = items;
+      return rest;
+    });
     setAdminIds((items) => {
       const nextAdmins = items.filter((id) => id !== memberId);
       return nextAdmins.length ? nextAdmins : [activeUser.id];
@@ -3063,7 +4041,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
   function addGhostMember() {
     const cleanName = ghostName.trim().slice(0, 40);
     if (!cleanName) {
-      setError("Ingresá un nombre para la persona fantasma.");
+      setError("Ingresá un nombre de integrante invitado.");
       return;
     }
     const id = `ghost-${Date.now()}`;
@@ -3115,6 +4093,97 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
     setError("");
   }
 
+  function startLinkingGuest(memberId) {
+    if (!canLinkGuests) {
+      setError("Solo un administrador puede vincular invitados.");
+      return;
+    }
+    setEditingGuestId(null);
+    setEditingGuestName("");
+    setLinkingGuestId(memberId);
+    setLinkTargetId("");
+    setError("");
+  }
+
+  function linkGuestToContact() {
+    if (!canLinkGuests || !linkingGuestId) {
+      setError("Solo un administrador puede vincular invitados.");
+      return;
+    }
+    if (!linkTargetId) {
+      setError("Seleccioná un contacto para vincular.");
+      return;
+    }
+    const guest = appUsers.find((user) => user.id === linkingGuestId);
+    const linkedUser = appUsers.find((user) => user.id === linkTargetId);
+    if (!guest || !linkedUser) {
+      setError("No encontré el invitado o el contacto seleccionado.");
+      return;
+    }
+    const now = new Date().toISOString();
+    setMemberIds((items) => [...new Set(items.map((id) => (id === linkingGuestId ? linkTargetId : id)))]);
+    setAdminIds((items) => [...new Set(items.map((id) => (id === linkingGuestId ? linkTargetId : id)))]);
+    setMemberColors((items) => {
+      const { [linkingGuestId]: guestColor, ...rest } = items;
+      return guestColor && !rest[linkTargetId] ? { ...rest, [linkTargetId]: guestColor } : rest;
+    });
+    replaceMonimons(monimons.map((item) => (
+      item.id === monimon.id
+        ? {
+            ...item,
+            members: [...new Set((item.members || []).map((id) => (id === linkingGuestId ? linkTargetId : id)))],
+            memberColors: cleanMemberColors({
+              ...(item.memberColors || {}),
+              ...(item.memberColors?.[linkingGuestId] && !item.memberColors?.[linkTargetId] ? { [linkTargetId]: item.memberColors[linkingGuestId] } : {})
+            }, [...new Set((item.members || []).map((id) => (id === linkingGuestId ? linkTargetId : id)))])
+          }
+        : item
+    )));
+    setMonimonMembers?.((items) => {
+      const linkedMemberships = items
+        .filter((item) => !(item.monimonId === monimon.id && item.memberId === linkTargetId))
+        .map((item) => (
+          item.monimonId === monimon.id && item.memberId === linkingGuestId
+            ? { ...item, memberId: linkTargetId, status: "active", source: "linked", linkedFromMemberId: linkingGuestId, linkedByMemberId: activeUser.id, linkedAt: now }
+            : item
+        ));
+      const hasLinkedMembership = linkedMemberships.some((item) => item.monimonId === monimon.id && item.memberId === linkTargetId);
+      return hasLinkedMembership
+        ? linkedMemberships
+        : [
+            ...linkedMemberships,
+            {
+              monimonId: monimon.id,
+              memberId: linkTargetId,
+              status: "active",
+              source: "linked",
+              linkedFromMemberId: linkingGuestId,
+              linkedByMemberId: activeUser.id,
+              createdAt: now,
+              linkedAt: now
+            }
+          ];
+    });
+    setMembers((items) => items.map((member) => (
+      member.id === linkingGuestId
+        ? { ...member, status: "linked", linkedProfileId: linkTargetId, linkedAt: now }
+        : member
+    )));
+    setDebts?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
+    setPayments?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
+    setPaymentRequests?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
+    onActivity?.({
+      monimonId: monimon.id,
+      memberId: activeUser.id,
+      activity: "Vinculación de integrante",
+      destination: `${shortDisplayName(guest.name)} -> ${shortDisplayName(linkedUser.name)}`,
+      destinationMemberId: linkTargetId
+    });
+    setLinkingGuestId(null);
+    setLinkTargetId("");
+    setError("");
+  }
+
   function saveMonimon() {
     const cleanName = monimonName.trim();
     if (!cleanName) {
@@ -3131,15 +4200,71 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
       return;
     }
     if (isEditing) {
+      if (!canLinkGuests) {
+        setError("Solo un administrador puede modificar el grupo.");
+        return;
+      }
       const cleanAdminIds = adminIds.filter((id) => cleanMembers.includes(id));
-      replaceMonimons(monimons.map((item) => (item.id === monimon.id ? { ...item, name: cleanName, members: cleanMembers, icon: groupIcon, adminIds: cleanAdminIds.length ? cleanAdminIds : [cleanMembers[0]] } : item)));
+      const cleanColors = cleanMemberColors(memberColors, cleanMembers);
+      replaceMonimons(monimons.map((item) => (item.id === monimon.id ? { ...item, name: cleanName, members: cleanMembers, memberColors: cleanColors, icon: groupIcon, adminIds: cleanAdminIds.length ? cleanAdminIds : [cleanMembers[0]] } : item)));
+      if (cleanName !== monimon.name) {
+        onActivity?.({
+          monimonId: monimon.id,
+          memberId: activeUser.id,
+          activity: "Modificación de nombre de grupo",
+          destination: cleanName
+        });
+      }
+      const previousMembers = new Set(monimon.members || []);
+      cleanMembers
+        .filter((memberId) => !previousMembers.has(memberId))
+        .forEach((memberId) => {
+          const addedMember = appUsers.find((user) => user.id === memberId);
+          onActivity?.({
+            monimonId: monimon.id,
+            memberId: activeUser.id,
+            activity: addedMember?.profileId ? "Invitación de integrante" : "Agregado de integrante",
+            destination: memberNameForActivity(memberId),
+            destinationMemberId: memberId
+          });
+        });
+      (monimon.members || [])
+        .filter((memberId) => !cleanMembers.includes(memberId))
+        .forEach((memberId) => onActivity?.({
+          monimonId: monimon.id,
+          memberId: activeUser.id,
+          activity: "Eliminación de integrante",
+          destination: memberNameForActivity(memberId),
+          destinationMemberId: memberId
+        }));
       setSelectedMonimonId(monimon.id);
       onClose();
       return;
     }
     const id = `monimon-${Date.now()}`;
     const cleanAdminIds = adminIds.filter((adminId) => cleanMembers.includes(adminId));
-    replaceMonimons([...monimons, { id, name: cleanName, members: cleanMembers, icon: groupIcon, adminIds: cleanAdminIds.length ? cleanAdminIds : [activeUser.id] }]);
+    const cleanColors = cleanMemberColors(memberColors, cleanMembers);
+    const usedInviteCodes = new Set(monimons.map((item) => inviteCodeForMonimon(item)));
+    const inviteCode = createInviteCode(usedInviteCodes);
+    replaceMonimons([...monimons, { id, name: cleanName, inviteCode, members: cleanMembers, memberColors: cleanColors, icon: groupIcon, adminIds: cleanAdminIds.length ? cleanAdminIds : [activeUser.id], createdByMemberId: activeUser.id, createdAt: new Date().toISOString() }]);
+    onActivity?.({
+      monimonId: id,
+      memberId: activeUser.id,
+      activity: "Creación del grupo",
+      destination: cleanName
+    });
+    cleanMembers
+      .filter((memberId) => memberId !== activeUser.id)
+      .forEach((memberId) => {
+        const addedMember = appUsers.find((user) => user.id === memberId);
+        onActivity?.({
+          monimonId: id,
+          memberId: activeUser.id,
+          activity: addedMember?.profileId ? "Invitación de integrante" : "Agregado de integrante",
+          destination: memberNameForActivity(memberId),
+          destinationMemberId: memberId
+        });
+      });
     setSelectedMonimonId(id);
     onClose();
   }
@@ -3189,89 +4314,134 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
         <section className="monimon-editor-section">
           <label>INTEGRANTES:</label>
           <div className="member-chip-list">
+            <div className="member-chip-row member-chip-header">
+              <span className="member-chip-header-integrantes">Integrantes</span>
+              <span className="member-admin-column-head">
+                <ShieldCheck size={16} />
+                <span>Admin</span>
+              </span>
+              <span className="member-link-column-head">
+                <BookUser size={16} />
+                <span>Vincular</span>
+              </span>
+              <span aria-hidden="true" />
+            </div>
             {memberIds.map((memberId, index) => {
               const member = appUsers.find((user) => user.id === memberId);
-              const memberName = member?.name || (memberId === activeUser.id ? activeUser.name : "INTEGRANTE");
+              const memberName = shortDisplayName(member?.name || (memberId === activeUser.id ? activeUser.name : "INTEGRANTE"));
               const isOwnUser = memberId === activeUser.id;
               const isEditableGuest = isEditing && !isOwnUser && !member?.profileId;
+              const membership = membershipByMemberId.get(memberId);
+              const isPendingMember = membership?.status === "pending";
+              const isAdmin = adminIds.includes(memberId);
+              const isLastAdmin = isAdmin && adminIds.length === 1;
               return (
-                <span className={`member-chip ${editingGuestId === memberId ? "editing" : ""}`} key={`${memberId}-${index}`}>
-                  {editingGuestId === memberId ? (
-                    <>
-                      <input
-                        value={editingGuestName}
-                        maxLength={40}
-                        onChange={(event) => setEditingGuestName(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") saveGuestName();
-                          if (event.key === "Escape") {
-                            setEditingGuestId(null);
-                            setEditingGuestName("");
-                          }
+                <div className={`member-chip-row ${editingGuestId === memberId || linkingGuestId === memberId ? "editing" : ""}`} key={`${memberId}-${index}`}>
+                  <label
+                    className="member-color-picker"
+                    style={{ "--member-picker-fondo": colorForMember(memberId) || "var(--nav-fondo)" }}
+                    title={`Color de ${memberName}`}
+                  >
+                    <Palette size={17} aria-hidden="true" />
+                    <input
+                      type="color"
+                      value={colorForMember(memberId) || "#0d1020"}
+                      onChange={(event) => updateMemberColor(memberId, event.target.value)}
+                      aria-label={`Color de ${memberName}`}
+                    />
+                  </label>
+                  <span className="member-chip-name-cell">
+                    <PersonChip className="member-chip" color={colorForMember(memberId)}>
+                      {editingGuestId === memberId ? (
+                        <input
+                          value={editingGuestName}
+                          maxLength={40}
+                          onChange={(event) => setEditingGuestName(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") saveGuestName();
+                            if (event.key === "Escape") {
+                              setEditingGuestId(null);
+                              setEditingGuestName("");
+                            }
+                          }}
+                          autoFocus
+                        />
+                      ) : (
+                        memberName
+                      )}
+                      {isPendingMember && <small className="member-pending-badge">Pendiente</small>}
+                    </PersonChip>
+                  </span>
+                  <label className="member-admin-checkbox" title="Administrador">
+                    <input
+                      type="checkbox"
+                      checked={isAdmin}
+                      disabled={isLastAdmin}
+                      onChange={() => toggleAdmin(memberId)}
+                      aria-label={`Administrador: ${memberName}`}
+                    />
+                  </label>
+                  <div className="member-link-cell">
+                    {isEditableGuest && canLinkGuests ? (
+                      <select
+                        className="member-link-select"
+                        value={linkingGuestId === memberId ? linkTargetId : ""}
+                        onFocus={() => {
+                          if (linkingGuestId !== memberId) startLinkingGuest(memberId);
                         }}
-                        autoFocus
-                      />
+                        onChange={(event) => {
+                          if (linkingGuestId !== memberId) setLinkingGuestId(memberId);
+                          setLinkTargetId(event.target.value);
+                        }}
+                        disabled={!availableLinkUsers.length}
+                      >
+                        <option value="">Invitado</option>
+                        {availableLinkUsers.map((user) => (
+                          <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="member-link-status">-</span>
+                    )}
+                  </div>
+                  <div className="member-chip-actions">
+                    {editingGuestId === memberId && (
                       <button type="button" onClick={saveGuestName} aria-label="Guardar nombre de invitado">
                         <Check size={15} />
                       </button>
-                    </>
-                  ) : (
-                    <>
-                      {memberName}
-                      {adminIds.includes(memberId) && <small className="member-admin-badge">Admin</small>}
-                      {isEditableGuest && (
-                        <button type="button" onClick={() => startEditingGuest(memberId)} aria-label="Editar nombre de invitado">
-                          <Pencil size={14} />
-                        </button>
-                      )}
-                      {memberIds.length > 1 && !isOwnUser && (
-                        <button type="button" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
-                          <X size={15} />
-                        </button>
-                      )}
-                    </>
-                  )}
-                </span>
+                    )}
+                    {linkingGuestId === memberId && (
+                      <button type="button" onClick={linkGuestToContact} aria-label="Vincular invitado">
+                        <Check size={15} />
+                      </button>
+                    )}
+                    {linkingGuestId === memberId && (
+                      <button type="button" onClick={() => { setLinkingGuestId(null); setLinkTargetId(""); }} aria-label="Cancelar vinculación">
+                        <X size={15} />
+                      </button>
+                    )}
+                    {isEditableGuest && editingGuestId !== memberId && linkingGuestId !== memberId && (
+                      <button type="button" onClick={() => startEditingGuest(memberId)} aria-label="Editar nombre de invitado">
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {memberIds.length > 1 && !isOwnUser && editingGuestId !== memberId && linkingGuestId !== memberId && (
+                      <button type="button" onClick={() => removeMember(index)} aria-label="Eliminar integrante">
+                        <X size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
-          <div className="member-add-grid">
-            <select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)} disabled={!availableUsers.length}>
-              <option value="">Seleccionar contacto</option>
-              {availableUsers.map((user) => (
-                <option key={user.id} value={user.id}>{user.name}</option>
-              ))}
-            </select>
-            <button type="button" className="member-add square" onClick={addMember} disabled={!availableUsers.length} aria-label="Agregar integrante">
-              <Plus size={22} />
-            </button>
-            <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Añadir invitado" />
+          <div className="member-add-grid manual-member-add">
+            <label className="member-add-label">Añadir nuevo integrante</label>
+            <input value={ghostName} maxLength={40} onChange={(event) => setGhostName(event.target.value)} placeholder="Nombre de integrante" />
             <button type="button" className="member-add square" onClick={addGhostMember} aria-label="Agregar no registrado">
               <Plus size={22} />
             </button>
           </div>
-        </section>
-        <section className="monimon-editor-section group-admin-list">
-          <div>
-            <b>Administradores</b>
-            <small>Solo administradores pueden registrar pagos directos. Siempre debe quedar al menos uno.</small>
-          </div>
-          {memberIds.map((memberId) => {
-            const member = appUsers.find((user) => user.id === memberId);
-            const checked = adminIds.includes(memberId);
-            const isLastAdmin = checked && adminIds.length === 1;
-            return (
-              <label key={memberId} className="group-admin-option">
-                <span>{member?.name || (memberId === activeUser.id ? activeUser.name : "INTEGRANTE")}</span>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={isLastAdmin}
-                  onChange={() => toggleAdmin(memberId)}
-                />
-              </label>
-            );
-          })}
         </section>
         <section className="monimon-editor-section group-advanced-section">
           <button
@@ -3303,35 +4473,52 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
           )}
         </section>
         {error && <p className="form-error">{error}</p>}
-        <div className="monimon-modal-actions monimon-editor-section">
+        <div className="monimon-modal-actions">
+          <button type="button" className="secondary-action cancel-monimon" onClick={onClose}>
+            Cancelar
+          </button>
           <button type="button" className="primary-action modal-create-btn" onClick={saveMonimon}>
             {isEditing ? "ACTUALIZAR CAMBIOS" : "CREAR"}
           </button>
         </div>
         {isEditing && (
-          <div className="delete-monimon-zone">
+          <section className="danger-zone-section">
             <button
               type="button"
-              className="delete-monimon-btn"
-              onClick={() => {
-                onDeleteMonimon?.(monimon);
-              }}
+              className="danger-zone-toggle"
+              onClick={() => setDangerOpen((open) => !open)}
+              aria-expanded={dangerOpen}
             >
-              <Trash2 size={16} /> Eliminar grupo
+              <span>Danger Zone</span>
+              {dangerOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
-          </div>
+            {dangerOpen && (
+              <div className="delete-monimon-zone">
+                <button
+                  type="button"
+                  className="delete-monimon-btn"
+                  onClick={async () => {
+                    const deleted = await onDeleteMonimon?.(monimon);
+                    if (deleted) onClose();
+                  }}
+                >
+                  <Trash2 size={16} /> Eliminar grupo
+                </button>
+              </div>
+            )}
+          </section>
         )}
       </div>
     </div>
   );
 }
 
-function DebtPanel({ activeUser, appUsers, getDebtMembers, incomingDebts, outgoingDebts, incomingTotal, outgoingTotal, selectedDebtIds, setSelectedDebtIds, isMonimonMode, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt, onRepeatDebt }) {
+function DebtPanel({ activeUser, appUsers, memberColors = {}, getDebtMembers, listDebts, incomingDebts, outgoingDebts, incomingTotal, outgoingTotal, selectedDebtIds, setSelectedDebtIds, preview, title, action, onNewDebt, onEditDebt, onDeleteDebt, onRepeatDebt }) {
   const hasOutgoingDebts = preview ? outgoingDebts.slice(0, 2).length > 0 : outgoingDebts.length > 0;
-  const groupedDebts = uniqueDebtsById(incomingDebts, outgoingDebts);
+  const groupedDebts = Array.isArray(listDebts) ? listDebts : uniqueDebtsById(incomingDebts, outgoingDebts);
   return (
     <section className="glass-card panel">
-      <PanelTitle icon={<ListChecks size={18} />} title={title || (isMonimonMode ? "Gastos" : "Mis gastos")} action={preview ? null : action || "Nuevo gasto"} onAction={onNewDebt} />
+      <PanelTitle icon={<ListChecks size={18} />} title={title || "Gastos"} action={preview ? null : action || "Nuevo gasto"} onAction={onNewDebt} />
       {preview ? (
         <div className={`split-list preview ${hasOutgoingDebts ? "" : "single"}`.trim()}>
           <DebtGroup
@@ -3347,6 +4534,7 @@ function DebtPanel({ activeUser, appUsers, getDebtMembers, incomingDebts, outgoi
             amountForDebt={(debt) => debtReceivableFor(debt, activeUser.id, getDebtMembers?.(debt) || appUsers)}
             getDebtMembers={getDebtMembers}
             appUsers={appUsers}
+            memberColors={memberColors}
           />
           {hasOutgoingDebts && (
             <DebtGroup
@@ -3360,6 +4548,7 @@ function DebtPanel({ activeUser, appUsers, getDebtMembers, incomingDebts, outgoi
               amountForDebt={(debt) => debtShareFor(debt, activeUser.id, getDebtMembers?.(debt) || appUsers)}
               getDebtMembers={getDebtMembers}
               appUsers={appUsers}
+              memberColors={memberColors}
             />
           )}
         </div>
@@ -3373,13 +4562,15 @@ function DebtPanel({ activeUser, appUsers, getDebtMembers, incomingDebts, outgoi
           onRepeatDebt={onRepeatDebt}
           getDebtMembers={getDebtMembers}
           appUsers={appUsers}
+          memberColors={memberColors}
+          emptyText={title === "Gastos" ? "Todavía no hay gastos." : "Todavía no hay préstamos."}
         />
       )}
     </section>
   );
 }
 
-function DebtGroupedList({ debts, selectedDebtIds, setSelectedDebtIds, appUsers, getDebtMembers, onEditDebt, onDeleteDebt, onRepeatDebt }) {
+function DebtGroupedList({ debts, selectedDebtIds, setSelectedDebtIds, appUsers, memberColors = {}, getDebtMembers, onEditDebt, onDeleteDebt, onRepeatDebt, emptyText = "Todavía no hay registros." }) {
   const groupedDebts = groupDebtsByDate(debts);
   return (
     <div className="debt-list debt-list-grouped">
@@ -3398,19 +4589,21 @@ function DebtGroupedList({ debts, selectedDebtIds, setSelectedDebtIds, appUsers,
                   onDeleteDebt={onDeleteDebt}
                   onRepeatDebt={onRepeatDebt}
                   members={getDebtMembers?.(debt) || appUsers || []}
+                  memberColors={memberColors}
                 />
               ))}
             </div>
           </div>
         ))
       ) : (
-        <EmptyState text="Todavía no hay registros." />
+        <EmptyState text={emptyText} />
       )}
     </div>
   );
 }
 
 function PaymentPanel({
+  appTheme,
   activeUser,
   appUsers,
   selectedMonimon,
@@ -3440,12 +4633,12 @@ function PaymentPanel({
   compact
 }) {
   const monimonMemberOptions = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : appUsers;
-  const monimonMemberKey = selectedMonimon?.members.join("|") || "personal";
-  const otherUser = monimonMemberOptions.find((user) => user.id !== activeUser.id) || appUsers.find((user) => user.id !== activeUser.id);
-  const isMonimonMode = selectedMonimonId !== "personal";
+  const monimonMemberKey = selectedMonimon?.members.join("|") || "group";
+  const groupAdminIds = selectedMonimon?.adminIds?.length ? selectedMonimon.adminIds : selectedMonimon?.members?.slice(0, 1) || [];
+  const canManageGroupPayments = groupAdminIds.includes(activeUser.id);
   const allowGroupTarget = monimonMemberOptions.length > 2;
   const [fromId, setFromId] = useState(activeUser.id);
-  const [toId, setToId] = useState(groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
+  const [toId, setToId] = useState(groupTargetId(activeUser, monimonMemberOptions));
   const [paymentMode, setPaymentMode] = useState("total");
   const [paymentTargetDetail, setPaymentTargetDetail] = useState(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -3489,14 +4682,14 @@ function PaymentPanel({
 
   useEffect(() => {
     const nextFrom = monimonMemberOptions.some((user) => user.id === activeUser.id) ? activeUser.id : monimonMemberOptions[0]?.id;
-    const nextTo = isMonimonMode && allowGroupTarget ? "group" : monimonMemberOptions.find((user) => user.id !== nextFrom)?.id || monimonMemberOptions[0]?.id;
+    const nextTo = allowGroupTarget ? "group" : monimonMemberOptions.find((user) => user.id !== nextFrom)?.id || monimonMemberOptions[0]?.id;
     setFromId(nextFrom);
     setToId(nextTo);
   }, [activeUser.id, selectedMonimonId, monimonMemberKey, allowGroupTarget]);
 
   function cancelPayment() {
     const nextFrom = monimonMemberOptions.some((user) => user.id === activeUser.id) ? activeUser.id : monimonMemberOptions[0]?.id;
-    const nextTo = isMonimonMode && allowGroupTarget ? "group" : monimonMemberOptions.find((user) => user.id !== nextFrom)?.id || monimonMemberOptions[0]?.id;
+    const nextTo = allowGroupTarget ? "group" : monimonMemberOptions.find((user) => user.id !== nextFrom)?.id || monimonMemberOptions[0]?.id;
     setFromId(nextFrom);
     setToId(nextTo);
     setPaymentMode("total");
@@ -3517,7 +4710,7 @@ function PaymentPanel({
       setPaymentError("Elegí una fecha de pago.");
       return;
     }
-    if (isMonimonMode && fromId === toId) {
+    if (fromId === toId) {
       setPaymentError("De y Para no pueden ser la misma persona.");
       return;
     }
@@ -3530,7 +4723,7 @@ function PaymentPanel({
       return;
     }
     const saved = registerPayment({
-      fromId: isMonimonMode ? fromId : activeUser.id,
+      fromId,
       toId: paymentTargetToId,
       debtIds: [],
       amountOverride: paymentMode === "total" ? activePaymentTargetAmount : null,
@@ -3565,12 +4758,13 @@ function PaymentPanel({
         members={monimonMemberOptions}
         activeUserId={activeUser.id}
         currency={currentSettlementCurrency}
+        memberColors={selectedMonimon?.memberColors || {}}
         expandedIds={expandedSettlementIds}
         setExpandedIds={setExpandedSettlementIds}
-        personalOnly={!isMonimonMode}
-        onInformPayment={(detail) => {
+        canManagePayments={canManageGroupPayments}
+        onInformPayment={(detail, row) => {
           setPaymentTargetDetail(detail || null);
-          setFromId(activeUser.id);
+          setFromId(row?.member?.id || activeUser.id);
           setToId(detail?.otherMemberId || toId);
           setPaymentCurrency(currentSettlementCurrency);
           setPaymentMode("total");
@@ -3579,7 +4773,7 @@ function PaymentPanel({
         }}
       />
       {showNewPayment && createPortal((
-        <div className="modal-layer payment-modal-layer" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
+        <div className="modal-layer payment-modal-layer" data-theme={appTheme} role="dialog" aria-modal="true" aria-labelledby="payment-modal-title">
           <div className="create-modal form-modal">
             <div className="modal-head">
               <h2 id="payment-modal-title">Nueva liquidación</h2>
@@ -3615,7 +4809,7 @@ function PaymentPanel({
           <div className="payment-direction readonly">
             <label>
               <span>De</span>
-              <strong>{userLabel(activeUser.id, activePaymentTargetMembers)}</strong>
+              <strong>{userLabel(fromId, activePaymentTargetMembers)}</strong>
             </label>
             <label>
               <span>Para</span>
@@ -3671,12 +4865,23 @@ function PaymentPanel({
           </div>
         </div>
       ), document.body)}
-      {payments.length > 0 && <PaymentRows payments={payments} appUsers={monimonMemberOptions} onEditPayment={onEditPayment} onDeletePayment={onDeletePayment} showActions showGroupColumn={false} />}
+      {payments.length > 0 && (
+        <PaymentRows
+          payments={payments}
+          appUsers={monimonMemberOptions}
+          activeUserId={activeUser.id}
+          monimons={selectedMonimon ? [selectedMonimon] : []}
+          onEditPayment={onEditPayment}
+          onDeletePayment={onDeletePayment}
+          showActions
+          showGroupColumn={false}
+        />
+      )}
     </section>
   );
 }
 
-function SettlementPaySummary({ debts, members, currency, onLiquidate, actionLabel = "INFORMAR PAGO", showClear = true }) {
+function SettlementPaySummary({ debts, members, memberColors = {}, currency, onLiquidate, actionLabel = "REGISTRAR PAGO", showClear = true }) {
   const totalDebt = debts.reduce((sum, detail) => sum + detail.amount, 0);
   if (totalDebt <= 0.009) {
     if (!showClear) return null;
@@ -3694,7 +4899,7 @@ function SettlementPaySummary({ debts, members, currency, onLiquidate, actionLab
       <div>
         {debts.length === 1 ? (
           <strong className="settlement-pay-title">
-            TENÉS UNA DEUDA PENDIENTE CON <span>{creditorName}</span>
+            TENÉS UNA DEUDA PENDIENTE CON <PersonChip color={memberColors[firstCreditor?.id]}>{creditorName}</PersonChip>
           </strong>
         ) : (
           <strong className="settlement-pay-title">
@@ -3707,7 +4912,7 @@ function SettlementPaySummary({ debts, members, currency, onLiquidate, actionLab
               const creditor = members.find((member) => member.id === detail.otherMemberId);
               return (
                 <span key={detail.id}>
-                  {money(detail.amount, currency)} a {creditor?.name || "INTEGRANTE"}
+                  {money(detail.amount, currency)} a <PersonChip color={memberColors[detail.otherMemberId]}>{creditor?.name || "INTEGRANTE"}</PersonChip>
                 </span>
               );
             })}
@@ -3719,12 +4924,11 @@ function SettlementPaySummary({ debts, members, currency, onLiquidate, actionLab
   );
 }
 
-function SettlementRows({ rows, members, activeUserId, currency, expandedIds, setExpandedIds, personalOnly = false, onInformPayment }) {
-  const scopedRows = personalOnly ? rows.filter((row) => row.member.id === activeUserId) : rows;
-  const visibleRows = scopedRows.filter((row) => row.member.id === activeUserId || row.details.length > 0 || Math.abs(row.balance) > 0.009);
-  const rowsToShow = personalOnly
-    ? visibleRows.filter((row) => row.details.length > 0 || Math.abs(row.balance) > 0.009)
-    : (visibleRows.length ? visibleRows : scopedRows);
+function SettlementRows({ rows, members, activeUserId, currency, memberColors = {}, expandedIds, setExpandedIds, canManagePayments = false, onInformPayment }) {
+  const hasPendingSettlement = rows.some((row) => row.details.length > 0 || Math.abs(row.balance) > 0.009);
+  const rowsToShow = hasPendingSettlement
+    ? rows.filter((row) => row.member.id === activeUserId || row.details.length > 0 || Math.abs(row.balance) > 0.009)
+    : rows;
   if (!rowsToShow.length) {
     return (
       <div className="settlement-list">
@@ -3740,16 +4944,19 @@ function SettlementRows({ rows, members, activeUserId, currency, expandedIds, se
         const rowKey = row.id || row.member.id;
         const isExpanded = expandedIds.includes(rowKey);
         const balanceClass = row.balance > 0 ? "positive" : row.balance < 0 ? "negative" : "neutral";
-        const rowTitle = personalOnly ? row.groupName || row.member.name : row.member.name;
+        const rowTitle = row.member.name;
         return (
-          <article key={rowKey} className={`settlement-card ${isExpanded ? "expanded" : ""}`}>
+          <article key={rowKey} className={`settlement-card ${isExpanded ? "expanded" : ""}`} onClick={() => setExpandedIds((items) => toggle(items, rowKey))}>
             <button
               type="button"
               className="settlement-main"
-              onClick={() => setExpandedIds((items) => toggle(items, rowKey))}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpandedIds((items) => toggle(items, rowKey));
+              }}
               aria-expanded={isExpanded}
             >
-              <span className="settlement-member">{rowTitle}</span>
+              <PersonChip className="settlement-member" color={memberColors[row.member.id]}>{rowTitle}</PersonChip>
               <span className="settlement-balance-stack">
                 <strong className={`settlement-balance ${balanceClass}`}>
                   {row.balance > 0 ? "+" : row.balance < 0 ? "-" : ""}
@@ -3762,18 +4969,18 @@ function SettlementRows({ rows, members, activeUserId, currency, expandedIds, se
               <div className="settlement-details">
                 {row.details.length ? row.details.map((detail) => {
                   const otherMember = members.find((member) => member.id === detail.otherMemberId);
-                  const canInformPayment = row.member.id === activeUserId && detail.type === "debt";
+                  const canInformPayment = detail.type === "debt" && (row.member.id === activeUserId || canManagePayments);
                   return (
                     <div key={detail.id} className={`settlement-detail-line ${detail.type}`}>
                       <b>{detail.type === "recover" ? "Recupera" : "Debe"}</b>
                       <strong>{money(detail.amount, currency)}</strong>
                       <span className="settlement-other-party">
                         <span className="settlement-relation">{detail.type === "recover" ? "de" : "a"}</span>
-                        <span className="settlement-other-name">{otherMember?.name || "INTEGRANTE"}</span>
+                        <PersonChip className="settlement-other-name" color={memberColors[detail.otherMemberId]}>{otherMember?.name || "INTEGRANTE"}</PersonChip>
                       </span>
                       {canInformPayment && (
-                        <button type="button" className="settlement-inform-pay-btn" onClick={() => onInformPayment(detail)}>
-                          INFORMAR PAGO
+                        <button type="button" className="settlement-inform-pay-btn" onClick={(event) => { event.stopPropagation(); onInformPayment(detail, row); }}>
+                          REGISTRAR PAGO
                         </button>
                       )}
                     </div>
@@ -3790,7 +4997,7 @@ function SettlementRows({ rows, members, activeUserId, currency, expandedIds, se
   );
 }
 
-function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members }) {
+function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members, memberColors = {} }) {
   const [expandedDebtIds, setExpandedDebtIds] = useState([]);
   return (
     <div className="payment-card-grid">
@@ -3823,7 +5030,7 @@ function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members 
               </button>
               {isExpanded && (
                 <div className="payment-card-details">
-                  <span>Pagado por <b>{counterparty.fromName}</b></span>
+                  <span>Pagado por <PersonChip color={memberColors[debt.fromMemberId]}>{counterparty.fromName}</PersonChip></span>
                   <span>Importe total <b>{money(debt.amount, debt.currency)}</b></span>
                 </div>
               )}
@@ -3839,13 +5046,13 @@ function PaymentDebtCards({ debts, selectedDebtIds, setSelectedDebtIds, members 
 
 function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, title: modalTitle = "Nuevo gasto", kind = "expense", registerDebt, onClose }) {
   const monimonMemberOptions = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : appUsers;
-  const otherUser = monimonMemberOptions.find((user) => user.id !== activeUser.id) || appUsers.find((user) => user.id !== activeUser.id);
-  const isMonimonMode = selectedMonimonId !== "personal";
+  const defaultPayer = monimonMemberOptions.find((user) => user.id === activeUser.id) || monimonMemberOptions[0] || activeUser;
+  const otherUser = monimonMemberOptions.find((user) => user.id !== defaultPayer.id);
   const isExpense = kind === "expense";
   const allowGroupTarget = kind === "expense" && monimonMemberOptions.length > 2;
-  const splitParticipants = isMonimonMode ? monimonMemberOptions : [activeUser, otherUser].filter(Boolean);
-  const [fromId, setFromId] = useState(activeUser.id);
-  const [toId, setToId] = useState(kind === "loan" ? otherUser?.id : groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
+  const splitParticipants = monimonMemberOptions;
+  const [fromId, setFromId] = useState(defaultPayer.id);
+  const [toId, setToId] = useState(kind === "loan" ? otherUser?.id : groupTargetId(activeUser, monimonMemberOptions));
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState(kind === "loan" ? "loan" : "general");
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
@@ -3861,6 +5068,30 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
   const [receiptFileName, setReceiptFileName] = useState("");
   const [error, setError] = useState("");
 
+  function resetDebtForm() {
+    setFromId(defaultPayer.id);
+    setToId(kind === "loan" ? otherUser?.id : groupTargetId(activeUser, monimonMemberOptions));
+    setTitle("");
+    setCategory(kind === "loan" ? "loan" : "general");
+    setCategoryMenuOpen(false);
+    setAmountInput("");
+    setSplitMode("equal");
+    setSelectedSplitMemberIds(splitParticipants.map((member) => member.id));
+    setSplitAmountInputs({});
+    setSplitPercentages({});
+    setCurrency("ARS");
+    setDate(todayISO());
+    setCalendarOpen(false);
+    setCalendarMonth(todayISO().slice(0, 7));
+    setReceiptFileName("");
+    setError("");
+  }
+
+  function cancelDebtForm() {
+    resetDebtForm();
+    onClose();
+  }
+
   function saveDebt() {
     const totalAmount = parseAmountInput(amountInput);
     const selectedSplitParticipants = splitParticipants.filter((member) => selectedSplitMemberIds.includes(member.id));
@@ -3868,7 +5099,7 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
       setError("Seleccioná al menos un integrante para dividir el gasto.");
       return;
     }
-    if (!isExpense && isMonimonMode && fromId === toId) {
+    if (!isExpense && fromId === toId) {
       setError("De y Para no pueden ser la misma persona.");
       return;
     }
@@ -3890,8 +5121,8 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
       ? buildSplitPayload({ splitMode, splitAmountInputs, splitPercentages, totalAmount, participants: selectedSplitParticipants })
       : { splitMode: "equal", splitAmounts: {}, splitPercentages: {} };
     const saved = registerDebt({
-      fromId: isMonimonMode ? fromId : otherUser.id,
-      toId: isExpense ? "group" : isMonimonMode ? toId : activeUser.id,
+      fromId,
+      toId: isExpense ? "group" : toId,
       title: title || "General",
       category,
       amount: totalAmount,
@@ -3955,20 +5186,18 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
             </label>
           </div>
           <div className="expense-form-row two-columns">
-            {isMonimonMode ? (
-              <label>
-                <span>Pagado por</span>
-                <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                </select>
-              </label>
-            ) : <span />}
-            {(!isExpense && isMonimonMode) ? (
+            <label>
+              <span>Pagado por</span>
+              <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
+                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+              </select>
+            </label>
+            {!isExpense ? (
               <label>
                 <span>Para</span>
                 <select value={toId} onChange={(event) => setToId(event.target.value)}>
                   {allowGroupTarget && <option value="group">GRUPO</option>}
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
                 </select>
               </label>
             ) : (
@@ -4025,9 +5254,14 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
             </>
           )}
           {error && <p className="form-error payment-error">{error}</p>}
-          <button type="button" onClick={saveDebt} className="primary-action save-payment save-debt">
-            {kind === "loan" ? "Guardar préstamo" : "Guardar gasto"}
-          </button>
+          <div className="modal-actions">
+            <button type="button" onClick={cancelDebtForm} className="secondary-action cancel-debt">
+              Cancelar
+            </button>
+            <button type="button" onClick={saveDebt} className="primary-action save-payment save-debt">
+              {kind === "loan" ? "Guardar préstamo" : "Guardar gasto"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -4036,11 +5270,36 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
 
 function CategoryReasonInput({ category, setCategory, menuOpen, setMenuOpen, value, onChange, placeholder }) {
   const selectedCategory = categoryFor(category);
+  const triggerRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState({});
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const positionMenu = () => {
+      const trigger = triggerRef.current;
+      const anchor = trigger?.closest(".category-reason-row") || trigger;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const width = Math.min(760, window.innerWidth - 48);
+      const maxHeight = Math.min(720, window.innerHeight - 132);
+      const left = Math.min(Math.max(24, rect.left), window.innerWidth - width - 24);
+      const top = Math.min(rect.bottom + 8, window.innerHeight - maxHeight - 24);
+      setMenuStyle({ width: `${width}px`, maxHeight: `${maxHeight}px`, left: `${left}px`, top: `${top}px` });
+    };
+    positionMenu();
+    window.addEventListener("resize", positionMenu);
+    window.addEventListener("scroll", positionMenu, true);
+    return () => {
+      window.removeEventListener("resize", positionMenu);
+      window.removeEventListener("scroll", positionMenu, true);
+    };
+  }, [menuOpen]);
 
   return (
     <div className="category-reason-row">
       <div className="category-dropdown">
         <button
+          ref={triggerRef}
           type="button"
           className="category-trigger"
           onClick={() => setMenuOpen((open) => !open)}
@@ -4049,8 +5308,9 @@ function CategoryReasonInput({ category, setCategory, menuOpen, setMenuOpen, val
         >
           {selectedCategory.emoji}
         </button>
-        {menuOpen && (
-          <div className="category-menu">
+        {menuOpen && createPortal(
+          <div className="category-menu" style={menuStyle}>
+            <span className="category-menu-title">Categorías</span>
             {expenseCategoryOptions.map(({ id, label, emoji }) => (
               <button
                 type="button"
@@ -4065,7 +5325,8 @@ function CategoryReasonInput({ category, setCategory, menuOpen, setMenuOpen, val
                 {label}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
       </div>
       <input value={value} maxLength={50} onChange={(event) => onChange(event.target.value.slice(0, 50))} placeholder={placeholder} />
@@ -4289,14 +5550,14 @@ function ReceiptDropzone({ fileName, setFileName }) {
 
 function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, debt, onClose, onSave }) {
   const monimonMemberOptions = selectedMonimon ? selectedMonimon.members.map((id) => appUsers.find((user) => user.id === id)).filter(Boolean) : appUsers;
-  const isMonimonMode = selectedMonimonId !== "personal";
   const isLoan = debt.kind === "loan";
   const isExpense = !isLoan;
   const allowGroupTarget = !isLoan && monimonMemberOptions.length > 2;
-  const otherUser = monimonMemberOptions.find((user) => user.id !== activeUser.id) || appUsers.find((user) => user.id !== activeUser.id);
-  const splitParticipants = isMonimonMode ? monimonMemberOptions : [activeUser, otherUser].filter(Boolean);
-  const [fromId, setFromId] = useState(debt.fromMemberId || activeUser.id);
-  const [toId, setToId] = useState(debt.toMemberId === "group" && !allowGroupTarget ? otherUser?.id : debt.toMemberId || groupTargetId(activeUser, monimonMemberOptions, isMonimonMode));
+  const defaultPayer = monimonMemberOptions.find((user) => user.id === debt.fromMemberId) || monimonMemberOptions.find((user) => user.id === activeUser.id) || monimonMemberOptions[0] || activeUser;
+  const otherUser = monimonMemberOptions.find((user) => user.id !== defaultPayer.id);
+  const splitParticipants = monimonMemberOptions;
+  const [fromId, setFromId] = useState(debt.fromMemberId || defaultPayer.id);
+  const [toId, setToId] = useState(debt.toMemberId === "group" && !allowGroupTarget ? otherUser?.id : debt.toMemberId || groupTargetId(activeUser, monimonMemberOptions));
   const [title, setTitle] = useState(debt.title || "");
   const [category, setCategory] = useState(debt.category || (isLoan ? "loan" : "general"));
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
@@ -4326,7 +5587,7 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
       setError("Seleccioná al menos un integrante para dividir el gasto.");
       return;
     }
-    if (!isExpense && isMonimonMode && fromId === toId) {
+    if (!isExpense && fromId === toId) {
       setError("De y Para no pueden ser la misma persona.");
       return;
     }
@@ -4397,20 +5658,18 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
             </label>
           </div>
           <div className="expense-form-row two-columns">
-            {isMonimonMode ? (
-              <label>
-                <span>Pagado por</span>
-                <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-                </select>
-              </label>
-            ) : <span />}
-            {(!isExpense && isMonimonMode) ? (
+            <label>
+              <span>Pagado por</span>
+              <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
+                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+              </select>
+            </label>
+            {!isExpense ? (
               <label>
                 <span>Para</span>
                 <select value={toId} onChange={(event) => setToId(event.target.value)}>
                   {allowGroupTarget && <option value="group">GRUPO</option>}
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
                 </select>
               </label>
             ) : (
@@ -4464,11 +5723,16 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
   );
 }
 
-function PaymentsPanel({ payments, debts = [], appUsers = [], getDebtMembers, activeUserId, personalOnly = false, monimons = [], personalSpaceName = "YO", compact, onEditPayment, onDeletePayment }) {
+function PaymentsPanel({ payments, debts = [], activityLog = [], appUsers = [], getDebtMembers, activeUserId, monimons = [], compact, onEditPayment, onDeletePayment }) {
+  const [historyTab, setHistoryTab] = useState("movimientos");
   return (
     <section className={`glass-card panel ${compact ? "compact-panel" : ""}`}>
-      <PanelTitle icon={<History size={18} />} title="Movimientos" />
-      <PaymentRows payments={payments} debts={debts} appUsers={appUsers} getDebtMembers={getDebtMembers} activeUserId={activeUserId} personalOnly={personalOnly} monimons={monimons} personalSpaceName={personalSpaceName} />
+      <PanelTitle icon={<History size={18} />} title="Historial" />
+      <div className="history-tabs" role="tablist" aria-label="Tipo de historial">
+        <button type="button" className={historyTab === "movimientos" ? "active" : ""} onClick={() => setHistoryTab("movimientos")}>Movimientos</button>
+        <button type="button" className={historyTab === "actividad" ? "active" : ""} onClick={() => setHistoryTab("actividad")}>Actividad</button>
+      </div>
+      <PaymentRows payments={payments} debts={debts} activityLog={activityLog} appUsers={appUsers} getDebtMembers={getDebtMembers} activeUserId={activeUserId} monimons={monimons} mode={historyTab} />
     </section>
   );
 }
@@ -4608,7 +5872,7 @@ function ContactRow({ member, status = "active", actionLabel, actionClassName = 
     <div className="contact-row">
       <Avatar user={member} />
       <span>
-        <b>{member.name}</b>
+        <b>{shortDisplayName(member.name)}</b>
         <small>{caption}</small>
       </span>
       <button type="button" className={actionClassName} onClick={onAction}>{actionLabel}</button>
@@ -4616,42 +5880,253 @@ function ContactRow({ member, status = "active", actionLabel, actionClassName = 
   );
 }
 
-function PaymentRows({ payments, debts = [], appUsers = [], getDebtMembers, activeUserId, personalOnly = false, monimons = [], onEditPayment, onDeletePayment, showActions = false, showGroupColumn = true }) {
+function activityLabelFor(activity, memberName, destinationName, groupName, targetName) {
+  const name = memberName || "INTEGRANTE";
+  const normalized = String(activity || "").toLowerCase();
+  const destinationIsGroup = destinationName && groupName && normalizedSearch(destinationName) === normalizedSearch(groupName);
+  const memberTargetName = destinationName && !destinationIsGroup ? destinationName : name;
+  const groupTargetName = destinationName && destinationName !== "GRUPO" ? destinationName : groupName || name;
+  const debtTargetName = targetName || name;
+  const changedFieldText = String(activity || "").split(":").slice(1).join(":").trim();
+  if (normalized.includes("solicitud de amistad enviada")) return `Envió solicitud de amistad a ${destinationName || name}`;
+  if (normalized.includes("aceptación de solicitud de amistad")) return `Aceptó solicitud de amistad de ${destinationName || name}`;
+  if (normalized.includes("agregó contacto") || normalized.includes("agrego contacto")) return `Envió solicitud de amistad a ${destinationName || name}`;
+  if (normalized.includes("eliminación de registro de pago")) return `Eliminó registro de pago de ${name}`;
+  if (normalized.includes("modificación de pago")) return `Modificó pago de ${name}`;
+  if (normalized.includes("registro de pago")) return `Registró pago de ${name}`;
+  if (normalized.includes("eliminación de gasto")) return `Eliminó gasto de ${name}`;
+  if (normalized.includes("modificación de gasto")) return `Modificó ${changedFieldText || "DATOS"} en gasto de ${debtTargetName}`;
+  if (normalized.includes("registro de gasto")) return `Añadió gasto de ${name}`;
+  if (normalized.includes("eliminación de préstamo")) return `Eliminó préstamo de ${name}`;
+  if (normalized.includes("modificación de préstamo")) return `Modificó ${changedFieldText || "DATOS"} en préstamo de ${debtTargetName}`;
+  if (normalized.includes("registro de préstamo")) return `Añadió préstamo de ${name}`;
+  if (normalized.includes("invitación de integrante") || normalized.includes("invitacion de integrante")) return `Invitó a ${memberTargetName}`;
+  if (normalized.includes("aceptación de invitación al grupo") || normalized.includes("aceptacion de invitacion al grupo")) return `Aceptó invitación a ${groupName || "grupo"}`;
+  if (normalized.includes("vinculación de integrante") || normalized.includes("vinculacion de integrante")) return `Vinculó ${destinationName || name}`;
+  if (normalized.includes("agregado de integrante")) return `Añadió a ${memberTargetName}`;
+  if (normalized.includes("eliminación de integrante")) return `Eliminó a ${memberTargetName}`;
+  if (normalized.includes("modificación de nombre de grupo")) return `Modificó nombre de grupo a ${groupTargetName}`;
+  if (normalized.includes("creación del grupo")) return `Creó grupo ${groupTargetName}`;
+  if (normalized.includes("eliminación del grupo")) return `Eliminó grupo ${groupTargetName}`;
+  return `${activity || "Actividad"} de ${name}`;
+}
+
+function PaymentRows({ payments, debts = [], activityLog = [], appUsers = [], getDebtMembers, activeUserId, monimons = [], mode = "movimientos", onEditPayment, onDeletePayment, showActions = false, showGroupColumn = true }) {
   const groupNameFor = (monimonId) => {
-    if (!monimonId || monimonId === "personal") return "YO";
     return monimons.find((monimon) => monimon.id === monimonId)?.name || "GRUPO";
   };
+  const groupFor = (monimonId) => monimons.find((monimon) => monimon.id === monimonId);
+  const colorFor = (monimonId, memberId) => {
+    const group = groupFor(monimonId);
+    return memberFrameColor(group, memberId);
+  };
+  const isActivityOnly = (activity) => {
+    const normalized = String(activity || "").toLowerCase();
+    return (
+      normalized.includes("solicitud de amistad")
+      || normalized.includes("contacto")
+      || normalized.includes("integrante")
+      || normalized.includes("grupo")
+    );
+  };
   const paymentMovements = payments
-    .filter((payment) => !personalOnly || payment.fromMemberId === activeUserId || payment.toMemberId === activeUserId)
     .map((payment) => ({
       id: `payment-${payment.id}`,
       kind: "payment",
       source: payment,
       date: debtDateKey(payment),
-      member: userLabel(payment.fromMemberId, appUsers),
-      movement: payment.fromMemberId === activeUserId ? "Pago de deuda" : payment.toMemberId === activeUserId ? "Recupero de deuda" : "Pago informado",
+      monimonId: payment.monimonId,
+      memberId: payment.registeredByMemberId || activeUserId || payment.fromMemberId,
+      member: userLabel(payment.registeredByMemberId || activeUserId || payment.fromMemberId, appUsers),
+      memberColor: colorFor(payment.monimonId, payment.registeredByMemberId || activeUserId || payment.fromMemberId),
+      movement: `Registró pago de ${userLabel(payment.fromMemberId, appUsers)}`,
+      movementPeople: [{ memberId: payment.fromMemberId, name: userLabel(payment.fromMemberId, appUsers), color: colorFor(payment.monimonId, payment.fromMemberId) }],
       amount: payment.amount,
       currency: payment.currency || "ARS",
+      balanceDelta: payment.fromMemberId === activeUserId
+        ? Number(payment.amount) || 0
+        : payment.toMemberId === activeUserId
+          ? -(Number(payment.amount) || 0)
+          : 0,
       groupName: groupNameFor(payment.monimonId),
-      destination: userLabel(payment.toMemberId, appUsers)
+      destination: userLabel(payment.toMemberId, appUsers),
+      destinationMemberId: payment.toMemberId,
+      destinationColor: colorFor(payment.monimonId, payment.toMemberId)
     }));
-  const debtMovements = debts.filter((debt) => !personalOnly || debt.fromMemberId === activeUserId).map((debt) => {
+  const debtMovements = debts.map((debt) => {
     const members = getDebtMembers?.(debt) || appUsers;
+    const registeredByMemberId = debt.registeredByMemberId || activeUserId || debt.fromMemberId;
     return {
       id: `debt-${debt.id}`,
       kind: "debt",
       source: debt,
       date: debtDateKey(debt),
-      member: userLabel(debt.fromMemberId, members),
-      movement: debt.kind === "loan" ? "Préstamo" : "Gasto",
+      monimonId: debt.monimonId,
+      memberId: registeredByMemberId,
+      member: userLabel(registeredByMemberId, appUsers),
+      memberColor: colorFor(debt.monimonId, registeredByMemberId),
+      movement: `${debt.kind === "loan" ? "Añadió préstamo" : "Añadió gasto"} de ${userLabel(debt.fromMemberId, members)}`,
+      movementPeople: [{ memberId: debt.fromMemberId, name: userLabel(debt.fromMemberId, members), color: colorFor(debt.monimonId, debt.fromMemberId) }],
       amount: debt.amount,
       currency: debt.currency || "ARS",
+      balanceDelta: expenseNetFor(debt, activeUserId, members),
       groupName: groupNameFor(debt.monimonId),
-      destination: debt.toMemberId === "group" ? "GRUPO" : userLabel(debt.toMemberId, members)
+      destination: debt.toMemberId === "group" ? "GRUPO" : userLabel(debt.toMemberId, members),
+      destinationMemberId: debt.toMemberId === "group" ? "" : debt.toMemberId,
+      destinationColor: debt.toMemberId === "group" ? "" : colorFor(debt.monimonId, debt.toMemberId)
     };
   });
-  const orderedMovements = [...paymentMovements, ...debtMovements].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const activityMovements = activityLog
+    .filter((item) => !isActivityOnly(item.activity))
+    .map((item) => {
+      const destinationMemberId = item.destinationMemberId || (appUsers.some((user) => user.id === item.destination) ? item.destination : "");
+      const destinationName = destinationMemberId ? userLabel(destinationMemberId, appUsers) : displayPersonName(item.destination, appUsers);
+      const targetMemberId = item.targetMemberId || "";
+      const targetName = targetMemberId ? userLabel(targetMemberId, appUsers) : "";
+      const groupName = groupNameFor(item.monimonId);
+      const memberName = userLabel(item.memberId, appUsers);
+      return {
+        id: `activity-${item.id}`,
+        kind: "activity",
+        source: item,
+        date: debtDateKey(item),
+        monimonId: item.monimonId,
+        memberId: item.memberId,
+        member: memberName,
+        memberColor: colorFor(item.monimonId, item.memberId),
+        movement: activityLabelFor(item.activity, memberName, destinationName, groupName, targetName),
+        movementPeople: [
+          { memberId: item.memberId, name: memberName, color: colorFor(item.monimonId, item.memberId) },
+          targetMemberId ? { memberId: targetMemberId, name: targetName, color: colorFor(item.monimonId, targetMemberId) } : null,
+          destinationMemberId ? { memberId: destinationMemberId, name: destinationName, color: colorFor(item.monimonId, destinationMemberId) } : null
+        ].filter(Boolean),
+        amount: Number(item.amount) || 0,
+        currency: item.currency || "ARS",
+        balanceDelta: Number(item.balanceDelta) || 0,
+        groupName,
+        destination: destinationName,
+        destinationMemberId,
+        destinationColor: destinationMemberId ? colorFor(item.monimonId, destinationMemberId) : ""
+      };
+    });
+  const socialActivities = activityLog
+    .filter((item) => isActivityOnly(item.activity))
+    .map((item) => {
+      const destinationMemberId = item.destinationMemberId || (appUsers.some((user) => user.id === item.destination) ? item.destination : "");
+      const destinationName = destinationMemberId ? userLabel(destinationMemberId, appUsers) : displayPersonName(item.destination, appUsers);
+      const groupName = groupNameFor(item.monimonId);
+      const memberName = userLabel(item.memberId, appUsers);
+      return {
+        id: `activity-${item.id}`,
+        kind: "activity",
+        source: item,
+        date: debtDateKey(item),
+        monimonId: item.monimonId,
+        memberId: item.memberId,
+        member: memberName,
+        memberColor: colorFor(item.monimonId, item.memberId),
+        movement: activityLabelFor(item.activity, memberName, destinationName, groupName),
+        movementPeople: [
+          { memberId: item.memberId, name: memberName, color: colorFor(item.monimonId, item.memberId) },
+          destinationMemberId ? { memberId: destinationMemberId, name: destinationName, color: colorFor(item.monimonId, destinationMemberId) } : null
+        ].filter(Boolean),
+        destination: destinationName,
+        destinationMemberId,
+        destinationColor: destinationMemberId ? colorFor(item.monimonId, destinationMemberId) : ""
+      };
+    });
+  const movementTimestamp = (movement) => {
+    const createdAt = movement.source?.createdAt || movement.source?.verifiedAt || "";
+    return createdAt || debtDateKey(movement);
+  };
+  const movementSortValue = (movement) => String(movementTimestamp(movement));
+  const movementRows = [...paymentMovements, ...debtMovements, ...activityMovements];
+  const orderedMovementsForBalance = movementRows
+    .map((movement, order) => ({ ...movement, order }))
+    .sort((a, b) => {
+      const dateCompare = movementSortValue(a).localeCompare(movementSortValue(b));
+      return dateCompare || b.order - a.order;
+    });
+  const balanceAfterByMovementId = orderedMovementsForBalance.reduce((result, movement) => {
+    const currency = movement.currency === "USD" ? "USD" : "ARS";
+    const previous = result.running[currency] || 0;
+    const next = previous + (Number(movement.balanceDelta) || 0);
+    return {
+      running: { ...result.running, [currency]: next },
+      byId: { ...result.byId, [movement.id]: next }
+    };
+  }, { running: emptyCurrencyBalances(), byId: {} }).byId;
+  const orderedMovements = movementRows
+    .map((movement, order) => ({ ...movement, order, balanceAfter: balanceAfterByMovementId[movement.id] }))
+    .sort((a, b) => {
+      const dateCompare = movementSortValue(b).localeCompare(movementSortValue(a));
+      return dateCompare || a.order - b.order;
+    });
+  const orderedActivities = socialActivities.sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const columnCount = 5 + (showGroupColumn ? 1 : 0) + (showActions ? 1 : 0);
+  const activityColumnCount = 3;
+  function renderMovementLabel(movement) {
+    const people = (movement.movementPeople || [])
+      .filter((person) => person?.name && normalizedSearch(person.name) !== normalizedSearch("GRUPO"))
+      .reduce((items, person) => {
+        const label = shortDisplayName(person.name);
+        if (!label || items.some((item) => normalizedSearch(item.label) === normalizedSearch(label))) return items;
+        return [...items, {
+          memberId: person.memberId,
+          label,
+          color: person.color || colorFor(movement.monimonId, person.memberId)
+        }];
+      }, []);
+    const escapedPeople = people.map((person) => person.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const pattern = [...escapedPeople, "solicitud de amistad", "gasto", "pago"].join("|");
+    const tokenRegex = new RegExp(`(${pattern})`, "gi");
+
+    return String(movement.movement).split(tokenRegex).map((part, index) => {
+      const person = people.find((item) => normalizedSearch(item.label) === normalizedSearch(part));
+      if (person) {
+        return <PersonChip key={`${part}-${index}`} color={person.color}>{person.label}</PersonChip>;
+      }
+      return /^(solicitud de amistad|gasto|pago)$/i.test(part)
+        ? <mark key={`${part}-${index}`}>{part}</mark>
+        : <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
+    });
+  }
+  if (mode === "actividad") {
+    return (
+      <div className="history-table-wrap">
+        <table className="history-table activity-history-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Integrante</th>
+              <th>Actividad</th>
+            </tr>
+          </thead>
+          <tbody>
+            {orderedActivities.length ? (
+              orderedActivities.map((movement) => (
+                <tr key={movement.id}>
+                  <td>{displayDate(movement.date)}</td>
+                  <td><PersonChip color={movement.memberColor}>{movement.member}</PersonChip></td>
+                  <td>
+                    <span className="history-movement-cell">
+                      <b>{renderMovementLabel(movement)}</b>
+                    </span>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="history-empty-cell" colSpan={activityColumnCount}>
+                  <EmptyState text="Todavía no hay actividad." />
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
   return (
     <div className="history-table-wrap">
       <table className="history-table">
@@ -4659,10 +6134,10 @@ function PaymentRows({ payments, debts = [], appUsers = [], getDebtMembers, acti
           <tr>
             <th>Fecha</th>
             <th>Integrante</th>
-            {showGroupColumn && <th>Grupo</th>}
-            <th>Tipo de Movimiento</th>
+            <th>Movimiento</th>
             <th className="history-amount-cell">Importe</th>
-            <th>Destino</th>
+            <th className="history-balance-cell">Saldo</th>
+            {showGroupColumn && <th>Grupo</th>}
             {showActions && <th className="history-actions-cell" aria-label="Acciones" />}
           </tr>
         </thead>
@@ -4671,15 +6146,21 @@ function PaymentRows({ payments, debts = [], appUsers = [], getDebtMembers, acti
             orderedMovements.map((movement) => (
               <tr key={movement.id}>
                 <td>{displayDate(movement.date)}</td>
-                <td>{movement.member}</td>
-                {showGroupColumn && <td>{movement.groupName}</td>}
+                <td><PersonChip color={movement.memberColor}>{movement.member}</PersonChip></td>
                 <td>
                   <span className="history-movement-cell">
-                    <b>{movement.movement}</b>
+                    <b>{renderMovementLabel(movement)}</b>
                   </span>
                 </td>
-                <td className="history-amount-cell">{money(movement.amount, movement.currency)}</td>
-                <td>{movement.destination}</td>
+                <td className="history-amount-cell">{movement.amount ? money(movement.amount, movement.currency) : "-"}</td>
+                <td className="history-balance-cell">
+                  {Number.isFinite(movement.balanceAfter) ? (
+                    <strong className={movement.balanceAfter > 0 ? "positive" : movement.balanceAfter < 0 ? "negative" : "neutral"}>
+                      {signedMoney(movement.balanceAfter, movement.currency)}
+                    </strong>
+                  ) : "-"}
+                </td>
+                {showGroupColumn && <td>{movement.groupName}</td>}
                 {showActions && (
                   <td className="history-actions-cell">
                     {movement.kind === "payment" && <RowActions onEdit={() => onEditPayment?.(movement.source)} onDelete={() => onDeletePayment?.(movement.source)} />}
@@ -4738,65 +6219,41 @@ function CalendarPopover({ month, selectedDate, setMonth, onSelect }) {
 
 function userLabel(userId, appUsers) {
   if (userId === "group") return "GRUPO";
-  return appUsers.find((user) => user.id === userId)?.name || userId?.toUpperCase?.() || "Usuario";
+  const userName = appUsers.find((user) => user.id === userId)?.name;
+  if (!userName && String(userId || "").toLowerCase().startsWith("ghost-")) return "INTEGRANTE INVITADO";
+  return userName ? shortDisplayName(userName) : userId?.toUpperCase?.() || "Usuario";
 }
 
-function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, rejectPaymentRequest }) {
-  const orderedRequests = [...requests].sort((a, b) => {
-    const statusRank = { pending: 0, rejected: 1, approved: 2 };
-    return (statusRank[a.status] ?? 3) - (statusRank[b.status] ?? 3);
-  });
+function RequestsPanel({ contactRequests = [], appUsers, approveContactRequest, rejectContactRequest }) {
+  const orderedContactRequests = [...contactRequests].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
-  if (!orderedRequests.length) {
+  if (!orderedContactRequests.length) {
     return <EmptyState text="Todavía no hay solicitudes." />;
   }
 
   return (
     <div className="request-list">
-      {orderedRequests.map((request) => {
-        const approvedByMemberIds = request.approvedByMemberIds || [];
-        const waitingIds = (request.requiredApproverMemberIds || []).filter((id) => !approvedByMemberIds.includes(id));
-        const canApprove = request.status === "pending" && waitingIds.includes(activeUser.id);
-        const canReject = request.status === "pending" && (request.requiredApproverMemberIds || []).includes(activeUser.id);
-        const requester = userLabel(request.requestedByMemberId, appUsers);
-        const waitingNames = waitingIds.map((id) => userLabel(id, appUsers)).join(", ");
-        const statusText = request.status === "approved"
-          ? `✓ Liquidación verificada${request.verifiedByMemberIds?.length ? ` por ${request.verifiedByMemberIds.map((id) => userLabel(id, appUsers)).join(", ")}` : ""}`
-          : request.status === "rejected"
-            ? `Rechazado por ${userLabel(request.rejectedByMemberId, appUsers)}`
-            : waitingNames
-              ? `Liquidación pendiente · esperando confirmación de ${waitingNames}`
-              : "Liquidación pendiente";
-
+      {orderedContactRequests.map((request) => {
+        const requester = appUsers.find((user) => user.id === request.ownerProfileId);
+        const requesterName = shortDisplayName(requester?.name || userLabel(request.ownerProfileId, appUsers));
         return (
-          <article key={request.id} className={`request-card ${request.status}`}>
+          <article key={`contact-${request.id}`} className="request-card pending">
             <div className="request-main">
-              <span className="history-icon"><ReceiptText size={17} /></span>
+              <span className="history-icon"><BookUser size={17} /></span>
               <span className="request-copy min-w-0 flex-1">
-                <b>{userLabel(request.fromMemberId, appUsers)} → {userLabel(request.toMemberId, appUsers)}</b>
-                <small>{requester} solicitó · {request.date}</small>
-                <small>{request.detail}</small>
-                <small className="request-status-text">{statusText}</small>
+                <b>SOLICITUD DE AMISTAD</b>
+                <small><span className="request-person-token">[{requesterName}]</span> {displayHandle(requester?.username)} quiere agregarte a su agenda.</small>
+                <small className="request-status-text">Estado: Pendiente</small>
               </span>
-              <strong>{money(request.amount, request.currency || "ARS")}</strong>
             </div>
-            {canApprove && (
-              <div className="request-actions">
-                <button type="button" className="request-reject" onClick={() => rejectPaymentRequest(request.id)}>
-                  <X size={15} /> Rechazar
-                </button>
-                <button type="button" className="request-approve" onClick={() => approvePaymentRequest(request.id)}>
-                  <Check size={15} /> Confirmar
-                </button>
-              </div>
-            )}
-            {!canApprove && canReject && (
-              <div className="request-actions">
-                <button type="button" className="request-reject" onClick={() => rejectPaymentRequest(request.id)}>
-                  <X size={15} /> Rechazar
-                </button>
-              </div>
-            )}
+            <div className="request-actions">
+              <button type="button" className="request-reject" onClick={() => rejectContactRequest(request.ownerProfileId)}>
+                <X size={15} /> Rechazar
+              </button>
+              <button type="button" className="request-approve" onClick={() => approveContactRequest(request.ownerProfileId)}>
+                <Check size={15} /> Aceptar
+              </button>
+            </div>
           </article>
         );
       })}
@@ -4804,7 +6261,7 @@ function RequestsPanel({ requests, activeUser, appUsers, approvePaymentRequest, 
   );
 }
 
-function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, getDebtMembers, onEditDebt, onDeleteDebt, onRepeatDebt, amountForDebt, totalOverride }) {
+function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelectedDebtIds, appUsers, memberColors = {}, getDebtMembers, onEditDebt, onDeleteDebt, onRepeatDebt, amountForDebt, totalOverride }) {
   const calculatedTotal = debts.reduce((sum, debt) => sum + (amountForDebt ? amountForDebt(debt) : debt.amount), 0);
   const total = Number.isFinite(totalOverride) ? totalOverride : calculatedTotal;
   const groupedDebts = debts.reduce((groups, debt) => {
@@ -4834,6 +6291,7 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
                   onDeleteDebt={onDeleteDebt}
                   onRepeatDebt={onRepeatDebt}
                   members={getDebtMembers?.(debt) || appUsers || []}
+                  memberColors={memberColors}
                 />
               ))}
             </div>
@@ -4846,7 +6304,7 @@ function DebtGroup({ title, tone, debts, selectable, selectedDebtIds, setSelecte
   );
 }
 
-function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onDeleteDebt, onRepeatDebt }) {
+function DebtRow({ debt, selectable, checked, onToggle, members, memberColors = {}, onEditDebt, onDeleteDebt, onRepeatDebt }) {
   const counterparty = debtCounterpartyParts(debt, members);
   const splitAmount = debt.kind !== "loan" && members.length > 1 ? debt.amount / members.length : null;
   const category = categoryFor(debt.category, debt.kind === "loan" ? "loan" : "general");
@@ -4879,10 +6337,10 @@ function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onD
           />
         </span>
         <span className="debt-line debt-amount-line">
-          <strong><span>IMPORTE TOTAL</span> {money(debt.amount)}</strong>
+          <strong><span>IMPORTE TOTAL</span> {money(debt.amount, debt.currency)}</strong>
         </span>
         <span className="debt-line">
-          <small className="counterparty-line">Pagado por <span>{counterparty.fromName}</span></small>
+          <small className="counterparty-line">Pagado por <PersonChip color={memberColors[debt.fromMemberId]}>{counterparty.fromName}</PersonChip></small>
           {splitAmount && (
             <button type="button" className="debt-detail-btn" onClick={(event) => { event.stopPropagation(); setDetailOpen((open) => !open); }}>
               Ver detalle
@@ -4893,7 +6351,7 @@ function DebtRow({ debt, selectable, checked, onToggle, members, onEditDebt, onD
           <span className="debt-detail-box">
             {detailItems.map((item) => (
               <span key={item.id} className={`debt-detail-line ${item.type}`}>
-                <span>{item.name}</span>
+                <PersonChip color={memberColors[item.id]}>{item.name}</PersonChip>
                 <b>{item.type === "recover" ? "recupera" : "debe"} {money(item.amount, debt.currency)}</b>
               </span>
             ))}
@@ -4927,22 +6385,44 @@ function RowActions({ onRepeat, onEdit, onDelete }) {
   );
 }
 
-function Metric({ id, label, value, currency = "ARS", positive, negative, help, openMetric, setOpenMetric }) {
+function Metric({ id, label, detailLabel = "Detalle", value, currency = "ARS", positive, negative, neutro, sign = "", help, openMetric, setOpenMetric }) {
   const isOpen = openMetric === id;
+  const toggleMetric = () => setOpenMetric(isOpen ? null : id);
+  const toneClass = [
+    positive ? "positive" : "",
+    negative ? "negative" : "",
+    neutro ? "neutro" : "",
+    isOpen ? "active" : ""
+  ].filter(Boolean).join(" ");
   return (
-    <div className={`metric ${positive ? "positive" : ""} ${negative ? "negative" : ""} ${isOpen ? "active" : ""}`}>
+    <div
+      className={`metric ${toneClass}`}
+      role="button"
+      tabIndex={0}
+      onClick={toggleMetric}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleMetric();
+        }
+      }}
+      aria-expanded={isOpen}
+    >
       <div className="metric-label-row">
         <p>{label}</p>
         {help && <span className="metric-help" title={help} aria-label={help}>?</span>}
       </div>
-      <b>{money(value, currency)}</b>
+      <b>{sign}{money(value, currency)}</b>
       <button
         type="button"
         className="metric-detail-btn"
-        onClick={() => setOpenMetric(isOpen ? null : id)}
+        onClick={(event) => {
+          event.stopPropagation();
+          toggleMetric();
+        }}
         aria-expanded={isOpen}
       >
-        {isOpen ? "- Detalle" : "+ Detalle"}
+        {isOpen ? `- ${detailLabel}` : `+ ${detailLabel}`}
       </button>
     </div>
   );

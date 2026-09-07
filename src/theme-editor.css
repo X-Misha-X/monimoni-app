@@ -1,384 +1,463 @@
 /*
-  EDITOR SIMPLE DE TEMAS
+  LABORATORIO SIMPLE DE TEMAS
 
-  Cambia colores aca, no en styles.css.
-  Podes usar hex (#88BAC8) o rgba(...) si queres transparencia.
-
-  Guia rapida:
-  --fondo-app: fondo general de pantalla.
-  --fondo-profundo: segundo fondo para gradientes.
-  --panel: paneles grandes.
-  --tarjeta: tarjetas, filas y cajas.
-  --campo: inputs, selects y botones secundarios.
-  --titulo: titulos y texto principal fuerte.
-  --texto: texto normal.
-  --texto-suave: texto secundario.
-  --borde: lineas y bordes.
-  --boton: botones principales.
-  --boton-texto: texto de botones principales.
-  --acento: detalles, links y estados activos.
-  --positivo: importes positivos.
-  --negativo: importes negativos.
+  Cada variable describe una funcion visual concreta.
+  Las paletas viven aca; styles.css solo consume estos roles semanticos.
 */
 
-[data-theme] {
-  --surface-0: var(--fondo-app);
-  --surface-1: var(--fondo-profundo);
-  --surface-2: var(--fondo-profundo);
-  --surface-3: var(--campo);
-  --surface-panel: color-mix(in srgb, var(--panel) 92%, transparent);
-  --surface-card: color-mix(in srgb, var(--tarjeta) 58%, transparent);
-  --surface-elevated: color-mix(in srgb, var(--campo) 78%, transparent);
-  --surface-soft: color-mix(in srgb, var(--acento) 18%, transparent);
-  --border: color-mix(in srgb, var(--borde) 28%, transparent);
-  --border-strong: color-mix(in srgb, var(--borde) 54%, transparent);
-  --text-strong: var(--titulo);
-  --text: var(--texto);
-  --text-muted: var(--texto-suave);
-  --accent: var(--boton);
-  --accent-strong: var(--acento);
-  --accent-contrast: var(--boton-texto);
-  --warm: var(--calido);
-  --success: var(--positivo);
-  --danger: var(--negativo);
-  --rose: var(--acento);
+[data-theme="default"] {
+  /* =========================
+     FONDOS PRINCIPALES
+     ========================= */
 
-  --dark: var(--surface-0);
-  --cocoa: var(--surface-2);
-  --cocoa-2: var(--surface-3);
-  --line: var(--border);
-  --line-hot: var(--border-strong);
-  --milk: var(--text-strong);
-  --muted: var(--text-muted);
-  --sakura: var(--accent-strong);
-  --net: var(--warm);
-  --green: var(--success);
-  --red: var(--danger);
-  --pink: var(--accent);
-  --pink-soft: var(--rose);
-  --berry: var(--boton);
+  --fondo-app: #f0e8ee;
+  --fondo-panel: #f8f4f6;
+  --fondo-tarjeta: #f9eff1;
+  --fondo-tarjeta-activa: #d7cbda;
+ 
+  /* =========================
+     TEXTO
+     ========================= */
+
+  --texto-principal: #5a4b6d;
+  --texto-secundario: #5a4b6d;
+  --texto-suave: #e7d6e7;
+  --texto-placeholder: #420a42;
+
+  /* =========================
+     ACENTO
+     ========================= */
+
+  --acento: #6c89af;
+
+  /* =========================
+     CONTROLES
+     ========================= */
+
+  --control-fondo: #d7cbda;
+  --control-texto: #7d6282;
+  --control-hover-fondo: #00ffcc;
+  --control-hover-texto: #330000;
+  --control-activo-fondo: #d7cbda;
+  --control-activo-texto: var(--texto-principal);
+
+  /* =========================
+     BOTON PRIMARIO
+     ========================= */
+  --boton-primario-fondo:  #a4698d;  
+  --boton-primario-texto: #d7cbda;
+  --boton-primario-hover-fondo: #615d9c;
+  --boton-primario-hover-texto: #ffffff;
+
+  /* =========================
+     NAVEGACION
+     ========================= */
+
+  --nav-fondo: #584868;
+  --nav-texto: #c3b5c9;
+  --nav-activo-fondo: #7d6282;
+  --nav-activo-texto: #f3f1f3;
+  --nav-bloqueado-texto: #9c899f;
+
+  /* =========================
+     TABLAS
+     ========================= */
+
+  --tabla-fondo: #ffffff;
+  --tabla-header-fondo: #584868;
+  --tabla-header-texto: #ffffff;
+  --tabla-fila-texto: var(--texto-principal);
+  --tabla-fila-hover-fondo: #ff99ff;
+  --tabla-fila-hover-texto: var(--texto-principal);
+  --tabla-separador: var(--texto-principal);
+
+  /* =========================
+     BORDES / SEPARADORES
+     ========================= */
+
+  --separador: transparent;
+  --focus: transparent;
+
+  /* =========================
+     SOMBRAS
+     ========================= */
+
+  --sombra-suave: rgb(0 0 0 / 18%);
+  --sombra-panel: rgb(0 0 0 / 32%);
+
+   /* =========================
+     ESTADOS
+     ========================= */
+   --neutro: #5a4b6d;
+   --positivo: #669da4;
+   --negativo:#ec9c9d;
+
+  /* =========================
+     PANTALLA PRINCIPAL
+     ========================= */
+
+  --inicio-fondo: #080705;
+  --inicio-texto-titulo: #f2e7dd;
+  --inicio-texto-secundario: #b79f93;
+  --inicio-panel-fondo: transparent;
+  --inicio-panel-borde: rgba(236, 156, 157, 0.36);
+  --inicio-panel-sombra: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --inicio-control-fondo: rgba(8, 7, 5, 0.5);
+  --inicio-control-texto: #f2e7dd;
+  --inicio-control-placeholder: #b79f93;
+  --inicio-control-borde: rgba(236, 156, 157, 0.22);
+  --inicio-control-icono-fondo: rgba(68, 48, 37, 0.32);
+  --inicio-acento: #f2cfc7;
+  --inicio-acento-hover: #ec9c9d;
+  --inicio-divisor: rgba(236, 156, 157, 0.24);
+  --inicio-tab-fondo: rgba(8, 7, 5, 0.36);
+  --inicio-tab-texto: #9f877d;
+  --inicio-tab-activo-fondo: rgba(199, 112, 145, 0.22);
+  --inicio-tab-activo-texto: #f2e7dd;
+  --inicio-boton-secundario-fondo: #f8f4ef;
+  --inicio-boton-secundario-texto: #1f1a18;
+  --inicio-boton-secundario-borde: rgba(242, 231, 221, 0.8);
+  --inicio-boton-secundario-hover-fondo: #ffffff;
+  --inicio-boton-primario-fondo: #bf7387;
+  --inicio-boton-primario-texto: #28100d;
+  --inicio-boton-primario-hover-fondo: #e99290;
+  --inicio-boton-primario-hover-texto: #28100d;
+  --inicio-boton-prueba-fondo: rgba(33, 28, 26, 0.78);
+  --inicio-boton-prueba-texto: #e7d8cf;
+  --inicio-boton-prueba-hover-fondo: rgba(236, 156, 157, 0.1);
+  --inicio-boton-prueba-hover-texto: #f2e7dd;
+
 }
 
 [data-theme="cocoa"] {
-  --fondo-app: #080705;
-  --fondo-profundo: #1a120f;
-  --panel: #120d0b;
-  --tarjeta: #080705;
-  --campo: #211c1a;
-  --titulo: #f2e7dd;
-  --texto: #e7d8cf;
-  --texto-suave: #b79f93;
-  --borde: #ec9c9d;
-  --boton: #bf7387;
-  --boton-texto: #28100d;
-  --acento: #ec9c9d;
-  --calido: #e6b8a0;
-  --positivo: #6edc8f;
-  --negativo: #ff7e86;
+    /* =========================
+     FONDOS PRINCIPALES
+     ========================= */
+
+  --fondo-app: #7377a3;
+  --fondo-panel: #f8f4f6;
+  --fondo-tarjeta: #FBF1EE;
+  --fondo-tarjeta-activa: #bac1ec;
+ 
+  /* =========================
+     TEXTO
+     ========================= */
+
+  --texto-principal: #5a4b6d;
+  --texto-secundario: #49517E;
+  --texto-suave: #e7d6e7;
+  --texto-placeholder: #6b6b91;
+
+  /* =========================
+     ACENTO
+     ========================= */
+
+  --acento: #4676ad;
+  --acento-counter: #d16991;
+
+  /* =========================
+     CONTROLES
+     ========================= */
+
+  --control-fondo: #d7cbda;
+  --control-texto: #7d6282;
+  --control-hover-fondo: #a4698d;
+  --control-hover-texto: #f1e8ea;
+  --control-activo-fondo: #d7cbda;
+  --control-activo-texto: var(--texto-principal);
+
+  /* =========================
+     BOTON PRIMARIO
+     ========================= */
+  --boton-primario-fondo:  #a4698d;  
+  --boton-primario-texto: #f1e8ea;
+  --boton-primario-hover-fondo: #ec9c9d;
+  --boton-primario-hover-texto: #49517E;
+
+  /* =========================
+     NAVEGACION
+     ========================= */
+
+  --nav-fondo: #0d1020;;
+  --nav-texto: #c3b5c9;
+  --nav-activo-fondo: #827BA7;
+  --nav-activo-texto: #f3f1f3;
+  --nav-bloqueado-texto: #9c899f;
+
+  /* =========================
+     TABLAS
+     ========================= */
+
+  --tabla-fondo: #FBF8F9;
+  --tabla-header-fondo: #5D5B80;
+  --tabla-header-texto: #ffffff;
+  --tabla-fila-texto: var(--texto-principal);
+  --tabla-fila-hover-fondo: #bac1ec;
+  --tabla-fila-hover-texto: var(--texto-principal);
+  --tabla-separador: var(--texto-principal);
+
+  /* =========================
+     BORDES / SEPARADORES
+     ========================= */
+
+  --separador: transparent;
+  --focus: transparent;
+
+  /* =========================
+     SOMBRAS
+     ========================= */
+
+  --sombra-suave: rgba(85, 60, 153, 0.18);
+  --sombra-panel: rgba(89, 119, 219, 0.32);
+
+   /* =========================
+     ESTADOS
+     ========================= */
+   --neutro: #5a4b6d;
+   --positivo: #669da4;
+   --negativo:#AB495D;
+
+  /* =========================
+     PANTALLA PRINCIPAL
+     ========================= */
+
+  --inicio-fondo: #141727;
+  --inicio-texto-titulo: #f2e7dd;
+  --inicio-texto-secundario: #5a4b6d;
+  --inicio-texto-terciario: #e7d6e7;
+  --inicio-texto-placeholder: #6b6b91;
+  --inicio-texto-acento: #ec9c9d;
+  --inicio-panel-fondo: #f0e8ee;
+  --inicio-panel-borde: #7d6282;
+  --inicio-panel-sombra: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --inicio-control-fondo: #d7cbda;
+  --inicio-control-texto: #7d6282;
+  --inicio-control-placeholder: #7d6282;
+  --inicio-control-borde: #49517E20;
+  --inicio-control-icono-fondo: #49517E;
+  --inicio-acento: #f2cfc7;
+  --inicio-acento-hover: #ec9c9d;
+  --inicio-divisor: #7d628240;
+  --inicio-tab-fondo: rgba(233, 13, 13, 0.36);
+  --inicio-tab-texto: #9f877d;
+  --inicio-tab-activo-fondo: rgba(199, 112, 145, 0.22);
+  --inicio-tab-activo-texto: #00ff88;
+  --inicio-boton-secundario-fondo: #f8f4ef;
+  --inicio-boton-secundario-texto: #1f1a18;
+  --inicio-boton-secundario-borde: rgba(242, 231, 221, 0.8);
+  --inicio-boton-secundario-hover-fondo: #ffffff;
+  --inicio-boton-primario-fondo: #bf7387;
+  --inicio-boton-primario-texto: #e7d6e7;
+  --inicio-boton-primario-hover-fondo: #e99290;
+  --inicio-boton-primario-hover-texto: #49517E;
+  --inicio-boton-prueba-fondo: rgba(33, 28, 26, 0.78);
+  --inicio-boton-prueba-texto: #e7d8cf;
+  --inicio-boton-prueba-hover-fondo: rgba(236, 156, 157, 0.1);
+  --inicio-boton-prueba-hover-texto: #f2e7dd;
 }
 
 [data-theme="botanical"] {
-  --fondo-app: #111712;
-  --fondo-profundo: #213935;
-  --panel: #18211d;
-  --tarjeta: #111712;
-  --campo: #263733;
-  --titulo: #f2e7dd;
-  --texto: #d9e1dc;
-  --texto-suave: #a99a86;
-  --borde: #88bac8;
-  --boton: #548a82;
-  --boton-texto: #071111;
-  --acento: #88bac8;
-  --calido: #a99a86;
-  --positivo: #79d7a1;
-  --negativo: #e88488;
+  --fondo-app: #7377a3;
+  --fondo-panel: #7377a3;
+  --fondo-tarjeta: #314887;
+  --fondo-tarjeta-activa: #353258;
+  --texto-principal: #f7eeeb;
+  --texto-secundario: #dab6aa;
+  --texto-suave: #111030;
+  --texto-placeholder: #111030;
+  --acento: #d982ab;
+  --control-fondo: #8b69a0;
+  --control-texto: #111030;
+  --control-hover-fondo: #434779;
+  --control-hover-texto: #f3f1f3;
+  --control-activo-fondo: #434779;
+  --control-activo-texto: #f3f1f3;
+  --boton-primario-fondo: #252861;
+  --boton-primario-texto: #dab6aa;
+  --boton-primario-hover-fondo: #d982ab;
+  --boton-primario-hover-texto: #111030;
+  --nav-fondo: #0d1020;
+  --nav-texto: #dab6aa;
+  --nav-activo-fondo: #7d6282;
+  --nav-activo-texto: #f3f1f3;
+  --nav-bloqueado-texto: #5e5676;
+  --tabla-fondo: #314887;
+  --tabla-header-fondo: #faaaa3;
+  --tabla-header-texto: #151f21;
+  --tabla-fila-texto: #f7eeeb;
+  --tabla-fila-hover-fondo: #353258;
+  --tabla-fila-hover-texto: #f7eeeb;
+  --tabla-separador: #4f618f;
+  --separador: #4f618f;
+  --focus: #d982ab;
+  --sombra-suave: rgb(0 0 0 / 10%);
+  --sombra-panel: rgb(0 0 0 / 20%);
+  /* =========================
+     PANTALLA PRINCIPAL
+     ========================= */
+
+  --inicio-fondo: #7377a3;
+  --inicio-texto-titulo: #f7eeeb;
+  --inicio-texto-secundario: #111030;
+  --inicio-panel-fondo: transparent;
+  --inicio-panel-borde: #4f618f;
+  --inicio-panel-sombra: 0 24px 70px var(--sombra-panel), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --inicio-control-fondo: #314887;
+  --inicio-control-texto: #f7eeeb;
+  --inicio-control-placeholder: #111030;
+  --inicio-control-borde: #4f618f;
+  --inicio-control-icono-fondo: #353258;
+  --inicio-acento: #d982ab;
+  --inicio-acento-hover: #d982ab;
+  --inicio-divisor: #4f618f;
+  --inicio-tab-fondo: #8b69a0;
+  --inicio-tab-texto: #111030;
+  --inicio-tab-activo-fondo: #434779;
+  --inicio-tab-activo-texto: #f3f1f3;
+  --inicio-boton-secundario-fondo: #f8f4ef;
+  --inicio-boton-secundario-texto: #1f1a18;
+  --inicio-boton-secundario-borde: rgba(242, 231, 221, 0.8);
+  --inicio-boton-secundario-hover-fondo: #ffffff;
+  --inicio-boton-primario-fondo: #252861;
+  --inicio-boton-primario-texto: #dab6aa;
+  --inicio-boton-primario-hover-fondo: #d982ab;
+  --inicio-boton-primario-hover-texto: #111030;
+
+  --inicio-boton-prueba-fondo: #8b69a0;
+  --inicio-boton-prueba-texto: #111030;
+  --inicio-boton-prueba-hover-fondo: #434779;
+  --inicio-boton-prueba-hover-texto: #f3f1f3;
+  --neutro: #d982ab;
+
+
+  --positivo: #61bbc9;
+  --negativo: #d17f8e;
 }
 
 [data-theme="rust-blue"] {
-  --fondo-app: #171112;
-  --fondo-profundo: #563838;
-  --panel: #1f181b;
-  --tarjeta: #171112;
-  --campo: #563838;
-  --titulo: #f0ded8;
-  --texto: #e2d1cc;
-  --texto-suave: #b99596;
-  --borde: #8aa0ad;
-  --boton: #e0a08b;
-  --boton-texto: #171112;
-  --acento: #8aa0ad;
-  --calido: #9c7276;
-  --positivo: #83d7a1;
-  --negativo: #ff8f92;
+    /* =========================
+     FONDOS PRINCIPALES
+     ========================= */
+
+  --fondo-app: #f0e8ee;
+  --fondo-panel: #f8f4f6;
+  --fondo-tarjeta: #FBF1EE;
+  --fondo-tarjeta-activa: #bac1ec;
+ 
+  /* =========================
+     TEXTO
+     ========================= */
+
+  --texto-principal: #5a4b6d;
+  --texto-secundario: #49517E;
+  --texto-suave: #e7d6e7;
+  --texto-placeholder: #6b6b91;
+
+  /* =========================
+     ACENTO
+     ========================= */
+
+  --acento: #4676ad;
+  --acento-counter: #d16991;
+
+  /* =========================
+     CONTROLES
+     ========================= */
+
+  --control-fondo: #d7cbda;
+  --control-texto: #7d6282;
+  --control-hover-fondo: #a4698d;
+  --control-hover-texto: #f1e8ea;
+  --control-activo-fondo: #d7cbda;
+  --control-activo-texto: var(--texto-principal);
+
+  /* =========================
+     BOTON PRIMARIO
+     ========================= */
+  --boton-primario-fondo:  #a4698d;  
+  --boton-primario-texto: #f1e8ea;
+  --boton-primario-hover-fondo: #ec9c9d;
+  --boton-primario-hover-texto: #49517E;
+
+  /* =========================
+     NAVEGACION
+     ========================= */
+
+  --nav-fondo: #49517E;
+  --nav-texto: #c3b5c9;
+  --nav-activo-fondo: #827BA7;
+  --nav-activo-texto: #f3f1f3;
+  --nav-bloqueado-texto: #9c899f;
+
+  /* =========================
+     TABLAS
+     ========================= */
+
+  --tabla-fondo: #FBF8F9;
+  --tabla-header-fondo: #5D5B80;
+  --tabla-header-texto: #ffffff;
+  --tabla-fila-texto: var(--texto-principal);
+  --tabla-fila-hover-fondo: #bac1ec;
+  --tabla-fila-hover-texto: var(--texto-principal);
+  --tabla-separador: var(--texto-principal);
+
+  /* =========================
+     BORDES / SEPARADORES
+     ========================= */
+
+  --separador: transparent;
+  --focus: transparent;
+
+  /* =========================
+     SOMBRAS
+     ========================= */
+
+  --sombra-suave: rgba(85, 60, 153, 0.18);
+  --sombra-panel: rgba(89, 119, 219, 0.32);
+
+   /* =========================
+     ESTADOS
+     ========================= */
+   --neutro: #5a4b6d;
+   --positivo: #669da4;
+   --negativo:#AB495D;
+
+  /* =========================
+     PANTALLA PRINCIPAL
+     ========================= */
+
+  --inicio-fondo: #141727;
+  --inicio-texto-titulo: #f2e7dd;
+  --inicio-texto-secundario: #5a4b6d;
+  --inicio-texto-terciario: #e7d6e7;
+  --inicio-texto-placeholder: #6b6b91;
+  --inicio-texto-acento: #ec9c9d;
+  --inicio-panel-fondo: #f0e8ee;
+  --inicio-panel-borde: #7d6282;
+  --inicio-panel-sombra: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --inicio-control-fondo: #d7cbda;
+  --inicio-control-texto: #7d6282;
+  --inicio-control-placeholder: #7d6282;
+  --inicio-control-borde: #49517E20;
+  --inicio-control-icono-fondo: #49517E;
+  --inicio-acento: #f2cfc7;
+  --inicio-acento-hover: #ec9c9d;
+  --inicio-divisor: #7d628240;
+  --inicio-tab-fondo: rgba(233, 13, 13, 0.36);
+  --inicio-tab-texto: #9f877d;
+  --inicio-tab-activo-fondo: rgba(199, 112, 145, 0.22);
+  --inicio-tab-activo-texto: #00ff88;
+  --inicio-boton-secundario-fondo: #f8f4ef;
+  --inicio-boton-secundario-texto: #1f1a18;
+  --inicio-boton-secundario-borde: rgba(242, 231, 221, 0.8);
+  --inicio-boton-secundario-hover-fondo: #ffffff;
+  --inicio-boton-primario-fondo: #bf7387;
+  --inicio-boton-primario-texto: #e7d6e7;
+  --inicio-boton-primario-hover-fondo: #e99290;
+  --inicio-boton-primario-hover-texto: #49517E;
+  --inicio-boton-prueba-fondo: rgba(33, 28, 26, 0.78);
+  --inicio-boton-prueba-texto: #e7d8cf;
+  --inicio-boton-prueba-hover-fondo: rgba(236, 156, 157, 0.1);
+  --inicio-boton-prueba-hover-texto: #f2e7dd;
 }
 
-[data-theme="ice-cream"] {
-  --fondo-app: #070c10;
-  --fondo-profundo: #432217;
-  --panel: #120f0e;
-  --tarjeta: #070c10;
-  --campo: #432217;
-  --titulo: #f2e2d0;
-  --texto: #ead9ce;
-  --texto-suave: #d8b5ba;
-  --borde: #d8b5ba;
-  --boton: #a96f4d;
-  --boton-texto: #180f0d;
-  --acento: #d8b5ba;
-  --calido: #e5d1b5;
-  --positivo: #77d89f;
-  --negativo: #f18482;
-}
-
-[data-theme="espresso"] {
-  --fondo-app: #050909;
-  --fondo-profundo: #1f2b2a;
-  --panel: #0a0d0d;
-  --tarjeta: #050909;
-  --campo: #1f2b2a;
-  --titulo: #f5eef6;
-  --texto: #e7dddd;
-  --texto-suave: #bfa7a0;
-  --borde: #f5eef6;
-  --boton: #7e1f05;
-  --boton-texto: #f5eef6;
-  --acento: #f5eef6;
-  --calido: #3a160f;
-  --positivo: #7ed99f;
-  --negativo: #ff8a7e;
-}
-
-[data-theme="blossom"] {
-  --fondo-app: #191015;
-  --fondo-profundo: #4a2030;
-  --panel: #1f131a;
-  --tarjeta: #191015;
-  --campo: #4a2030;
-  --titulo: #eef0e8;
-  --texto: #e6dcd4;
-  --texto-suave: #d9ccc1;
-  --borde: #d9ccc1;
-  --boton: #a34d63;
-  --boton-texto: #191015;
-  --acento: #b37a86;
-  --calido: #d9ccc1;
-  --positivo: #78d69e;
-  --negativo: #ff7d86;
-}
-
-[data-theme="dawn"] {
-  --fondo-app: #252a3c;
-  --fondo-profundo: #525871;
-  --panel: #272a3a;
-  --tarjeta: #252a3c;
-  --campo: #525871;
-  --titulo: #f8ccaa;
-  --texto: #f1d6c5;
-  --texto-suave: #c9b1b5;
-  --borde: #f2c1a3;
-  --boton: #cd9fa0;
-  --boton-texto: #252a3c;
-  --acento: #f2c1a3;
-  --calido: #f8ccaa;
-  --positivo: #86dca5;
-  --negativo: #ff858e;
-}
-
-[data-theme="mulberry"] {
-  --fondo-app: #292030;
-  --fondo-profundo: #43374f;
-  --panel: #2b2232;
-  --tarjeta: #292030;
-  --campo: #544664;
-  --titulo: #cbd3d8;
-  --texto: #e4dce4;
-  --texto-suave: #c9a9b8;
-  --borde: #cbd3d8;
-  --boton: #a67ca4;
-  --boton-texto: #292030;
-  --acento: #6a8ca9;
-  --calido: #c9a9b8;
-  --positivo: #83d9a3;
-  --negativo: #ff8390;
-}
-
-[data-theme="sakura"] {
-  --fondo-app: #160d11;
-  --fondo-profundo: #522e30;
-  --panel: #221418;
-  --tarjeta: #160d11;
-  --campo: #522e30;
-  --titulo: #f0d2de;
-  --texto: #ead8df;
-  --texto-suave: #bd7893;
-  --borde: #d89fb6;
-  --boton: #9d5a6f;
-  --boton-texto: #160d11;
-  --acento: #d89fb6;
-  --calido: #f2cfc7;
-  --positivo: #78d99f;
-  --negativo: #ff7e86;
-}
-
-[data-theme="coral-viridian"] {
-  --fondo-app: #102a27;
-  --fondo-profundo: #29413a;
-  --panel: #102a27;
-  --tarjeta: #0e1e1c;
-  --campo: #29413a;
-  --titulo: #f9d3c0;
-  --texto: #f3ddd3;
-  --texto-suave: #faaaa2;
-  --borde: #f9d3c0;
-  --boton: #d97172;
-  --boton-texto: #102a27;
-  --acento: #faaaa2;
-  --calido: #f9d3c0;
-  --positivo: #7bd99f;
-  --negativo: #ff8088;
-}
-
-[data-theme="burgundy-blue"] {
-  --fondo-app: #130711;
-  --fondo-profundo: #3d5d91;
-  --panel: #140a15;
-  --tarjeta: #130711;
-  --campo: #3d5d91;
-  --titulo: #f2dcdb;
-  --texto: #e7dce4;
-  --texto-suave: #f2aebc;
-  --borde: #f2dcdb;
-  --boton: #6c0820;
-  --boton-texto: #f2dcdb;
-  --acento: #f2aebc;
-  --calido: #5a86cb;
-  --positivo: #7bd79f;
-  --negativo: #ff7e86;
-}
-
-[data-theme="frost"] {
-  --fondo-app: #02122f;
-  --fondo-profundo: #23354d;
-  --panel: #051226;
-  --tarjeta: #02122f;
-  --campo: #23354d;
-  --titulo: #f0ecdd;
-  --texto: #e1e7ef;
-  --texto-suave: #aeb9cb;
-  --borde: #8ba3c5;
-  --boton: #8ba3c5;
-  --boton-texto: #02122f;
-  --acento: #f0ecdd;
-  --calido: #cbd3d8;
-  --positivo: #81dba4;
-  --negativo: #ff8589;
-}
-
-[data-theme="gelato"] {
-  --fondo-app: #161820;
-  --fondo-profundo: #3a3b45;
-  --panel: #17181f;
-  --tarjeta: #161820;
-  --campo: #3a3b45;
-  --titulo: #f4f4f5;
-  --texto: #e3e5e9;
-  --texto-suave: #c2c6cf;
-  --borde: #c2c6cf;
-  --boton: #5f4838;
-  --boton-texto: #f4f4f5;
-  --acento: #f4f4f5;
-  --calido: #c2c6cf;
-  --positivo: #82dca3;
-  --negativo: #ff8a85;
-}
-
-[data-theme="cherry"] {
-  --fondo-app: #130b0a;
-  --fondo-profundo: #7a4138;
-  --panel: #180e0d;
-  --tarjeta: #130b0a;
-  --campo: #7a4138;
-  --titulo: #f0efe4;
-  --texto: #e5e3d8;
-  --texto-suave: #b29b90;
-  --borde: #d1d2ca;
-  --boton: #8b001e;
-  --boton-texto: #f0efe4;
-  --acento: #d1d2ca;
-  --calido: #b29b90;
-  --positivo: #7eda9e;
-  --negativo: #ff7e86;
-}
-
-[data-theme="soft-blush"] {
-  --fondo-app: #20191c;
-  --fondo-profundo: #604d53;
-  --panel: #211a1d;
-  --tarjeta: #20191c;
-  --campo: #604d53;
-  --titulo: #ffdada;
-  --texto: #eee0e3;
-  --texto-suave: #d5c5c8;
-  --borde: #ffdada;
-  --boton: #db7f8e;
-  --boton-texto: #20191c;
-  --acento: #ffdada;
-  --calido: #d5c5c8;
-  --positivo: #80dba3;
-  --negativo: #ff858c;
-}
-
-[data-theme="milk-tea"] {
-  --fondo-app: #1c100c;
-  --fondo-profundo: #443025;
-  --panel: #1f130e;
-  --tarjeta: #1c100c;
-  --campo: #443025;
-  --titulo: #f2cfca;
-  --texto: #ead8ce;
-  --texto-suave: #aa7f66;
-  --borde: #f2cfca;
-  --boton: #ec9c9d;
-  --boton-texto: #1c100c;
-  --acento: #f2cfca;
-  --calido: #aa7f66;
-  --positivo: #7edca2;
-  --negativo: #ff8087;
-}
-
-[data-theme="dessert"] {
-  --fondo-app: #070c10;
-  --fondo-profundo: #432217;
-  --panel: #160d0c;
-  --tarjeta: #070c10;
-  --campo: #432217;
-  --titulo: #f2dcdb;
-  --texto: #f0ded8;
-  --texto-suave: #d8b6b4;
-  --borde: #f2cfc7;
-  --boton: #d97172;
-  --boton-texto: #1f120e;
-  --acento: #faaaa2;
-  --calido: #f9d3c0;
-  --positivo: #7bdca3;
-  --negativo: #ff8088;
-}
-
-[data-theme="succulent"] {
-  --fondo-app: #0c101b;
-  --fondo-profundo: #333a57;
-  --panel: #11151f;
-  --tarjeta: #0c101b;
-  --campo: #333a57;
-  --titulo: #e7f1f4;
-  --texto: #d6e4e8;
-  --texto-suave: #a7b7c7;
-  --borde: #88bac8;
-  --boton: #4d869b;
-  --boton-texto: #0c101b;
-  --acento: #88bac8;
-  --calido: #a67ca4;
-  --positivo: #7edba3;
-  --negativo: #ff7f8b;
-}

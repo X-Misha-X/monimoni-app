@@ -33,14 +33,17 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
 STATE_KEY = os.environ.get("MONIMONI_STATE_KEY") or os.environ.get("MONIMON_STATE_KEY", "default")
+ALLOWED_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("MONIMONI_ALLOWED_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")
+    if origin.strip()
+}
 ADMIN_EMAILS = {
     email.strip().lower()
     for email in os.environ.get("MONIMONI_ADMIN_EMAILS", "").split(",")
     if email.strip()
 }
 UUID_NAMESPACE = uuid.UUID("7f99e2a7-8d3f-45ed-a410-85d6b6e01f82")
-
-
 def normalize_username(value=""):
     text = unicodedata.normalize("NFKD", str(value or ""))
     text = "".join(char for char in text if not unicodedata.combining(char))
@@ -68,16 +71,21 @@ EMPTY_STATE = {
     "payments": [],
     "paymentRequests": [],
     "contacts": [],
+    "activityLog": [],
+    "archiveFiles": [],
     "personalSpaceName": "PERSONAL",
 }
 
 
 def json_response(handler, status, payload):
     body = json.dumps(payload).encode("utf-8")
+    origin = (handler.headers.get("Origin") or "").rstrip("/")
+    allowed_origin = origin if origin in ALLOWED_ORIGINS else next(iter(ALLOWED_ORIGINS), "*")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
     handler.send_header("Content-Length", str(len(body)))
-    handler.send_header("Access-Control-Allow-Origin", "*")
+    handler.send_header("Access-Control-Allow-Origin", allowed_origin)
+    handler.send_header("Vary", "Origin")
     handler.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
     handler.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
     handler.end_headers()
@@ -207,6 +215,12 @@ def bearer_token(handler):
     return auth_header.split(" ", 1)[1].strip()
 
 
+def require_valid_token(token):
+    if not token:
+        raise RuntimeError("Missing session token")
+    return auth_request("GET", "user", access_token=token)
+
+
 def get_state():
     rows = supabase_request("GET", f"group_state?key=eq.{STATE_KEY}&select=data")
     if not rows:
@@ -234,20 +248,48 @@ def get_state():
     return {
         **legacy_state,
         **normalized_state,
-        "debts": merge_authoritative_records(
+        "profiles": merge_legacy_profile_metadata(
+            legacy_state.get("profiles", []),
+            normalized_state.get("profiles", []),
+        ),
+        "debts": merge_personal_legacy_records(
             legacy_state.get("debts", []),
             normalized_state.get("debts", []),
-            legacy_group_ids,
         ),
-        "payments": merge_authoritative_records(
+        "payments": merge_personal_legacy_records(
             legacy_state.get("payments", []),
             normalized_state.get("payments", []),
-            legacy_group_ids,
         ),
         "paymentRequests": legacy_state.get("paymentRequests", []),
         "contacts": legacy_state.get("contacts", []),
+        "activityLog": normalize_activity_log_records(legacy_state.get("activityLog", [])),
         "personalSpaceName": legacy_state.get("personalSpaceName") or "PERSONAL",
     }
+
+
+def merge_legacy_profile_metadata(legacy_profiles, normalized_profiles):
+    legacy_by_id = {
+        item.get("id"): item
+        for item in legacy_profiles
+        if isinstance(item, dict) and item.get("id")
+    }
+    preserved_keys = {
+        "bankAlias",
+        "bankCbu",
+        "bankVisibilityMode",
+        "bankVisibleMemberIds",
+    }
+    merged = []
+    for profile in normalized_profiles:
+        legacy = legacy_by_id.get(profile.get("id"), {})
+        extras = {key: legacy[key] for key in preserved_keys if key in legacy}
+        merged.append({**profile, **extras})
+    normalized_ids = {item.get("id") for item in normalized_profiles if isinstance(item, dict)}
+    merged.extend(
+        profile for profile in legacy_profiles
+        if isinstance(profile, dict) and profile.get("id") not in normalized_ids
+    )
+    return merged
 
 
 def merge_legacy_group_metadata(legacy_state, normalized_state):
@@ -257,10 +299,20 @@ def merge_legacy_group_metadata(legacy_state, normalized_state):
     metadata_by_id = {
         item.get("id"): {
             "icon": item.get("icon"),
+            "inviteCode": item.get("inviteCode"),
+            "memberColors": remap_member_keyed_dict(item.get("memberColors"), value_mode="keep"),
         }
         for item in legacy_groups
         if item.get("id")
     }
+    for item in legacy_groups:
+        raw_id = item.get("id") if isinstance(item, dict) else None
+        if raw_id:
+            metadata_by_id.setdefault(as_uuid(raw_id, "monimon"), {
+                "icon": item.get("icon"),
+                "inviteCode": item.get("inviteCode"),
+                "memberColors": remap_member_keyed_dict(item.get("memberColors"), value_mode="keep"),
+            })
     normalized_groups = []
     for group in normalized_state.get("monimons", []):
         metadata = metadata_by_id.get(group.get("id"), {})
@@ -279,17 +331,21 @@ def merge_legacy_debt_metadata(legacy_state, normalized_state):
     legacy_debts = legacy_state.get("debts", [])
     if not isinstance(legacy_debts, list):
         legacy_debts = []
-    metadata_by_id = {
-        item.get("id"): {
+    metadata_by_id = {}
+    for item in legacy_debts:
+        raw_id = item.get("id") if isinstance(item, dict) else None
+        if not raw_id:
+            continue
+        metadata = {
             "category": item.get("category"),
-            "splitParticipantIds": item.get("splitParticipantIds"),
+            "splitParticipantIds": remap_member_id_list(item.get("splitParticipantIds")),
             "splitMode": item.get("splitMode"),
-            "splitAmounts": item.get("splitAmounts"),
-            "splitPercentages": item.get("splitPercentages"),
+            "splitAmounts": remap_member_keyed_dict(item.get("splitAmounts"), value_mode="keep"),
+            "splitPercentages": remap_member_keyed_dict(item.get("splitPercentages"), value_mode="keep"),
+            "registeredByMemberId": remap_member_id(item.get("registeredByMemberId")),
         }
-        for item in legacy_debts
-        if item.get("id")
-    }
+        metadata_by_id[str(raw_id)] = metadata
+        metadata_by_id.setdefault(as_uuid(raw_id, "expense"), metadata)
     normalized_debts = []
     for debt in normalized_state.get("debts", []):
         metadata = metadata_by_id.get(debt.get("id"), {})
@@ -298,6 +354,29 @@ def merge_legacy_debt_metadata(legacy_state, normalized_state):
             **{key: value for key, value in metadata.items() if value},
         })
     return normalized_debts
+
+
+def remap_member_id(value):
+    if not value or value == "group":
+        return value
+    return as_uuid(value, "member")
+
+
+def remap_member_id_list(values):
+    if not isinstance(values, list):
+        return values
+    return [remap_member_id(value) for value in values if value]
+
+
+def remap_member_keyed_dict(values, value_mode="keep"):
+    if not isinstance(values, dict):
+        return values
+    remapped = {}
+    for key, value in values.items():
+        member_id = remap_member_id(key)
+        if member_id:
+            remapped[member_id] = value
+    return remapped
 
 
 def merge_personal_legacy_records(legacy_records, normalized_records):
@@ -348,6 +427,41 @@ def merge_payment_records(legacy_records, normalized_records):
         if signature:
             seen_signatures.add(signature)
     return merged
+
+
+def normalize_activity_log_records(items):
+    if not isinstance(items, list):
+        return []
+    normalized_items = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        next_item = {**item}
+        monimon_id = next_item.get("monimonId")
+        if monimon_id and monimon_id != "personal":
+            next_item["monimonId"] = as_uuid(monimon_id, "monimon")
+        else:
+            next_item["monimonId"] = monimon_id or ""
+
+        member_id = next_item.get("memberId")
+        if member_id and member_id not in {"unknown", "group"}:
+            next_item["memberId"] = as_uuid(member_id, "member")
+        else:
+            next_item["memberId"] = member_id or "unknown"
+
+        destination_member_id = next_item.get("destinationMemberId")
+        if destination_member_id and destination_member_id not in {"unknown", "group"}:
+            next_item["destinationMemberId"] = as_uuid(destination_member_id, "member")
+        else:
+            next_item["destinationMemberId"] = ""
+
+        target_member_id = next_item.get("targetMemberId")
+        if target_member_id and target_member_id not in {"unknown", "group"}:
+            next_item["targetMemberId"] = as_uuid(target_member_id, "member")
+        else:
+            next_item["targetMemberId"] = ""
+        normalized_items.append(next_item)
+    return normalized_items
 
 
 def payment_signature(payment):
@@ -436,11 +550,12 @@ def monimon_to_state(row):
 
 
 def membership_to_state(row):
+    status = row.get("status") or "active"
     return {
         "monimonId": row.get("group_id"),
         "memberId": row.get("member_id"),
         "role": row.get("role") or "member",
-        "status": row.get("status") or "active",
+        "status": "pending" if status == "invited" else status,
     }
 
 
@@ -600,6 +715,8 @@ def put_state(state):
         "payments": state.get("payments") if isinstance(state.get("payments"), list) else [],
         "paymentRequests": state.get("paymentRequests") if isinstance(state.get("paymentRequests"), list) else [],
         "contacts": state.get("contacts") if isinstance(state.get("contacts"), list) else [],
+        "activityLog": normalize_activity_log_records(state.get("activityLog")),
+        "archiveFiles": state.get("archiveFiles") if isinstance(state.get("archiveFiles"), list) else [],
         "personalSpaceName": personal_space_name.strip()[:32],
     }
     validate_state(clean_state)
@@ -698,7 +815,7 @@ def sync_normalized_state(state):
             "group_id": monimon_id,
             "member_id": member_id,
             "role": item.get("role") if item.get("role") in {"owner", "admin", "member"} else "member",
-            "status": item.get("status") if item.get("status") in {"active", "invited", "removed"} else "active",
+            "status": "invited" if item.get("status") == "pending" else item.get("status") if item.get("status") in {"active", "invited", "removed"} else "active",
         })
 
     membership_keys = {
@@ -720,10 +837,10 @@ def sync_normalized_state(state):
     expense_rows = []
     participant_rows = []
     payment_rows = []
-    active_members_by_monimon = {}
+    participant_members_by_monimon = {}
     for item in membership_rows:
-        if item["status"] == "active":
-            active_members_by_monimon.setdefault(item["group_id"], set()).add(item["member_id"])
+        if item["status"] != "removed":
+            participant_members_by_monimon.setdefault(item["group_id"], set()).add(item["member_id"])
 
     for debt in debts:
         if debt.get("kind") == "loan" or debt.get("monimonId") == "personal":
@@ -741,7 +858,7 @@ def sync_normalized_state(state):
             "expense_date": iso_date(debt.get("date")),
             "status": "verified" if debt.get("status") != "deleted" else "deleted",
         })
-        participants = set(active_members_by_monimon.get(monimon_id) or [])
+        participants = set(participant_members_by_monimon.get(monimon_id) or [])
         if not participants and debt.get("toMemberId") and debt.get("toMemberId") != "group":
             participants.add(member_id_map.get(str(debt.get("toMemberId"))) or as_uuid(debt.get("toMemberId"), "member"))
         participants.add(paid_by_member_id)
@@ -895,6 +1012,10 @@ def delete_monimon(monimon_id):
         item for item in data.get("paymentRequests", [])
         if item.get("monimonId") not in removed_ids
     ]
+    data["archiveFiles"] = [
+        item for item in data.get("archiveFiles", [])
+        if item.get("monimonId") not in removed_ids
+    ]
     payload = {"key": STATE_KEY, "data": {**EMPTY_STATE, **data}}
     supabase_request(
         "POST",
@@ -964,8 +1085,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if path == "/api/state":
                 token = bearer_token(self)
-                if SUPABASE_URL and SUPABASE_ANON_KEY and token:
-                    auth_request("GET", "user", access_token=token)
+                if not token:
+                    json_response(self, 401, {"error": "Missing session token"})
+                    return
+                require_valid_token(token)
                 json_response(self, 200, get_state())
                 return
             json_response(self, 404, {"error": "Not found"})
@@ -982,7 +1105,7 @@ class Handler(BaseHTTPRequestHandler):
             if not token:
                 json_response(self, 401, {"error": "Missing session token"})
                 return
-            auth_request("GET", "user", access_token=token)
+            require_valid_token(token)
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
             json_response(self, 200, put_state(payload))
@@ -1035,13 +1158,37 @@ class Handler(BaseHTTPRequestHandler):
                 if not token:
                     json_response(self, 401, {"error": "Missing session token"})
                     return
-                json_response(self, 200, decorate_auth_payload(auth_request("GET", "user", access_token=token)))
+                json_response(self, 200, decorate_auth_payload(require_valid_token(token)))
                 return
             if path == "/api/auth/logout":
                 token = payload.get("access_token") or bearer_token(self)
                 if token:
                     auth_request("POST", "logout", access_token=token)
                 json_response(self, 200, {"ok": True})
+                return
+            if path == "/api/auth/update-email":
+                token = payload.get("access_token") or bearer_token(self)
+                if not token:
+                    json_response(self, 401, {"error": "Missing session token"})
+                    return
+                email = str(payload.get("email") or "").strip().lower()
+                if "@" not in email:
+                    json_response(self, 400, {"error": "Ingresá un correo válido."})
+                    return
+                data = auth_request("PUT", "user", {"email": email}, access_token=token)
+                json_response(self, 200, decorate_auth_payload(data))
+                return
+            if path == "/api/auth/update-password":
+                token = payload.get("access_token") or bearer_token(self)
+                if not token:
+                    json_response(self, 401, {"error": "Missing session token"})
+                    return
+                password = str(payload.get("password") or "")
+                if len(password) < 6:
+                    json_response(self, 400, {"error": "La contraseña debe tener al menos 6 caracteres."})
+                    return
+                data = auth_request("PUT", "user", {"password": password}, access_token=token)
+                json_response(self, 200, decorate_auth_payload(data))
                 return
             if path == "/api/auth/delete-account":
                 token = payload.get("access_token") or bearer_token(self)
@@ -1068,7 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not token:
                     json_response(self, 401, {"error": "Missing session token"})
                     return
-                auth_request("GET", "user", access_token=token)
+                require_valid_token(token)
                 json_response(self, 200, delete_monimon(payload.get("id")))
                 return
             json_response(self, 404, {"error": "Not found"})
