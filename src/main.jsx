@@ -82,7 +82,8 @@ const appThemes = [
   { id: "rust-blue", name: "Lavanda" }
 ];
 
-const defaultAppTheme = appThemes[0].id;
+const defaultAppTheme = "cocoa";
+const themePreferenceVersion = "hortensia-default-v1";
 const appThemeIds = new Set(appThemes.map((theme) => theme.id));
 
 function buildCountryOptions() {
@@ -983,6 +984,10 @@ function App() {
   const [saveRetryTick, setSaveRetryTick] = useState(0);
   const [appTheme, setAppTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem("monimon-theme");
+    const savedVersion = window.localStorage.getItem("monimon-theme-version");
+    if (savedVersion !== themePreferenceVersion && (!savedTheme || savedTheme === "default")) {
+      return defaultAppTheme;
+    }
     return appThemeIds.has(savedTheme) ? savedTheme : defaultAppTheme;
   });
   const backendLoaded = useRef(false);
@@ -1144,6 +1149,7 @@ function App() {
 
   useEffect(() => {
     window.localStorage.setItem("monimon-theme", appTheme);
+    window.localStorage.setItem("monimon-theme-version", themePreferenceVersion);
   }, [appTheme]);
 
   useEffect(() => {

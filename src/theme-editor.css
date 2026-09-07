@@ -221,39 +221,39 @@
      PANTALLA PRINCIPAL
      ========================= */
 
-  --inicio-fondo: #141727;
-  --inicio-texto-titulo: #f2e7dd;
-  --inicio-texto-secundario: #5a4b6d;
+  --inicio-fondo: #7377a3;
+  --inicio-texto-titulo: #f8f4f6;
+  --inicio-texto-secundario: #e7d6e7;
   --inicio-texto-terciario: #e7d6e7;
   --inicio-texto-placeholder: #6b6b91;
-  --inicio-texto-acento: #ec9c9d;
-  --inicio-panel-fondo: #f0e8ee;
-  --inicio-panel-borde: #7d6282;
-  --inicio-panel-sombra: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+  --inicio-texto-acento: #f8f4f6;
+  --inicio-panel-fondo: #f8f4f6;
+  --inicio-panel-borde: rgba(90, 75, 109, 0.22);
+  --inicio-panel-sombra: 0 24px 70px rgba(42, 36, 64, 0.28), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   --inicio-control-fondo: #d7cbda;
-  --inicio-control-texto: #7d6282;
+  --inicio-control-texto: #5a4b6d;
   --inicio-control-placeholder: #7d6282;
-  --inicio-control-borde: #49517E20;
-  --inicio-control-icono-fondo: #49517E;
-  --inicio-acento: #f2cfc7;
-  --inicio-acento-hover: #ec9c9d;
-  --inicio-divisor: #7d628240;
-  --inicio-tab-fondo: rgba(233, 13, 13, 0.36);
-  --inicio-tab-texto: #9f877d;
-  --inicio-tab-activo-fondo: rgba(199, 112, 145, 0.22);
-  --inicio-tab-activo-texto: #00ff88;
-  --inicio-boton-secundario-fondo: #f8f4ef;
-  --inicio-boton-secundario-texto: #1f1a18;
-  --inicio-boton-secundario-borde: rgba(242, 231, 221, 0.8);
+  --inicio-control-borde: rgba(73, 81, 126, 0.18);
+  --inicio-control-icono-fondo: #49517e;
+  --inicio-acento: #4676ad;
+  --inicio-acento-hover: #a4698d;
+  --inicio-divisor: rgba(125, 98, 130, 0.25);
+  --inicio-tab-fondo: rgba(215, 203, 218, 0.72);
+  --inicio-tab-texto: #7d6282;
+  --inicio-tab-activo-fondo: #a4698d;
+  --inicio-tab-activo-texto: #f8f4f6;
+  --inicio-boton-secundario-fondo: #f8f4f6;
+  --inicio-boton-secundario-texto: #5a4b6d;
+  --inicio-boton-secundario-borde: rgba(90, 75, 109, 0.18);
   --inicio-boton-secundario-hover-fondo: #ffffff;
-  --inicio-boton-primario-fondo: #bf7387;
-  --inicio-boton-primario-texto: #e7d6e7;
-  --inicio-boton-primario-hover-fondo: #e99290;
-  --inicio-boton-primario-hover-texto: #49517E;
-  --inicio-boton-prueba-fondo: rgba(33, 28, 26, 0.78);
-  --inicio-boton-prueba-texto: #e7d8cf;
-  --inicio-boton-prueba-hover-fondo: rgba(236, 156, 157, 0.1);
-  --inicio-boton-prueba-hover-texto: #f2e7dd;
+  --inicio-boton-primario-fondo: #a4698d;
+  --inicio-boton-primario-texto: #f8f4f6;
+  --inicio-boton-primario-hover-fondo: #4676ad;
+  --inicio-boton-primario-hover-texto: #ffffff;
+  --inicio-boton-prueba-fondo: rgba(248, 244, 246, 0.82);
+  --inicio-boton-prueba-texto: #5a4b6d;
+  --inicio-boton-prueba-hover-fondo: #d7cbda;
+  --inicio-boton-prueba-hover-texto: #5a4b6d;
 }
 
 [data-theme="botanical"] {
