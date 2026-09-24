@@ -21,6 +21,10 @@ for p in state['profiles']:
 for m in state['members']:
     m['displayName'] = m['id'].upper()
     m['status'] = 'active' if m.get('profileId') else 'ghost'
+# Deliberately divergent values catch a stale member/Google name overriding
+# the current "Nombre visible" stored in the profile.
+next(p for p in state['profiles'] if p['id'] == 'lucas').update(name='Lu de casa', displayName='LUCAS SOSA')
+next(m for m in state['members'] if m['id'] == 'lucas')['displayName'] = 'LUCAS SOSA'
 state['debts'][0].update(title='Gasto sólo de MISHA', currency='ARS', date='2026-09-24')
 state['monimons'].append({'id': 'g2', 'name': 'VIAJE TEST', 'inviteCode': 'VIAJE2', 'adminIds': ['misha']})
 state['monimonMembers'].extend({'monimonId': 'g2', 'memberId': mid, 'status': 'active'} for mid in ('misha','gor'))

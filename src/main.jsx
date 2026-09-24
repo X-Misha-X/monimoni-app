@@ -46,6 +46,7 @@ import {
 import { createApiClient, readSession, storeSession, rememberPreference, setRememberPreference, tokenExpiry } from "./session.js";
 import { useSharedState } from "./use-shared-state.js";
 import { freezeExpenseParticipants } from "./shared-state.js";
+import { visibleName, memberVisibleName } from "./person-name.js";
 import "./styles.css";
 import "./theme-editor.css";
 
@@ -338,12 +339,7 @@ function displayPersonName(value, appUsers = []) {
     || normalizedSearch(user.name) === normalizedText
   ));
   if (!match && raw.toLowerCase().startsWith("ghost-")) return "INTEGRANTE INVITADO";
-  return match ? shortDisplayName(match.name) : shortDisplayName(raw);
-}
-
-function shortDisplayName(value = "") {
-  const firstName = String(value).trim().split(/\s+/)[0];
-  return (firstName || "").toUpperCase();
+  return match ? visibleName(match.name) : visibleName(raw);
 }
 
 function isHexColor(value) {
@@ -595,6 +591,7 @@ function normalizeArchiveFiles(items) {
           monimonId: item.monimonId || "",
           createdAt: item.createdAt || "",
           uploadedBy: item.uploadedBy || "Usuario",
+          uploadedByMemberId: item.uploadedByMemberId || null,
           category: item.category || "General"
         }))
     : [];
@@ -611,7 +608,7 @@ function normalizeProfiles(items) {
       return {
         ...avatarCrop,
         ...item,
-        name: String(name).toUpperCase(),
+        name: visibleName(name),
         username,
         avatarSrc: item.avatarSrc || avatarOptions[0].src
       };
@@ -1013,7 +1010,7 @@ function App() {
     return {
       ...(profile || {}),
       id: member.id,
-      name: member.displayName || profile?.name || "USUARIO",
+      name: memberVisibleName(member, profile),
       memberStatus: member.status,
       profileId: member.profileId || null,
       avatarSrc: profile?.avatarSrc || avatarOptions[0].src,
@@ -2476,7 +2473,7 @@ function Dashboard({
             <div className="profile-area" ref={profileAreaRef}>
               <button type="button" className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)}>
                 <Avatar user={activeUser} />
-                <span>{shortDisplayName(activeUser.name)}</span>
+                <span>{visibleName(activeUser.name)}</span>
                 <ChevronDown size={16} className="profile-trigger-chevron" />
               </button>
               {profileMenuOpen && (
@@ -2521,7 +2518,7 @@ function Dashboard({
           <section className="content-area">
             {selectedMonimon && (
               <div className="workspace-people workspace-people-strip">
-                {membersForSelectedMonimon.filter(member => selectedMonimon.members.includes(member.id)).map((member) => <PersonChip key={member.id} color={memberFrameColor(selectedMonimon, member.id)}>{shortDisplayName(member.name)}</PersonChip>)}
+                {membersForSelectedMonimon.filter(member => selectedMonimon.members.includes(member.id)).map((member) => <PersonChip key={member.id} color={memberFrameColor(selectedMonimon, member.id)}>{visibleName(member.name)}</PersonChip>)}
               </div>
             )}
             <div className="dashboard-grid">
@@ -2570,7 +2567,7 @@ function Dashboard({
                 {activeView === "pagos" && <PaymentsPanel payments={historyPayments} debts={historyDebts} activityLog={historyActivityLog} appUsers={appUsers} getDebtMembers={getSummaryDebtMembers} activeUserId={activeUser.id} monimons={monimons} onEditPayment={setEditingPayment} onDeletePayment={deletePayment} />}
                 {activeView === "archivo" && (
                   <section className="glass-card panel">
-                    <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} activeUser={activeUser} monimonId={selectedMonimonId} />
+                    <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} activeUser={activeUser} appUsers={appUsers} monimonId={selectedMonimonId} />
                   </section>
                 )}
                 {activeView === "pago" && (
@@ -3144,7 +3141,7 @@ function ProfileMenu({ activeUser, appTheme, appThemes, setAppTheme, setProfileM
       <div className="profile-menu-head">
         <Avatar user={activeUser} />
         <div>
-          <b>{shortDisplayName(activeUser.name)}</b>
+          <b>{visibleName(activeUser.name)}</b>
           <small>{activeUser.role === "admin" ? "Admin" : "Usuario activo"}</small>
         </div>
         {activeUser.role === "admin" && <span className="profile-role-badge"><ShieldCheck size={14} /> Admin</span>}
@@ -3260,7 +3257,7 @@ function AvatarModal({ activeUser, updateActiveUser, onClose }) {
 
 function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, deleteAccount, updateAccountEmail, updateAccountPassword, onClose }) {
   const [username, setUsername] = useState(activeUser.username || usernameFromProfile(activeUser));
-  const [name, setName] = useState(shortDisplayName(activeUser.name));
+  const [name, setName] = useState(visibleName(activeUser.name));
   const [email, setEmail] = useState(activeUser.email || "");
   const [editingEmail, setEditingEmail] = useState(false);
   const [password, setPassword] = useState("");
@@ -3287,7 +3284,7 @@ function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, delet
 
   async function saveSettings() {
     const cleanUsername = normalizeUsername(username);
-    const cleanName = shortDisplayName(name).slice(0, 20);
+    const cleanName = visibleName(name);
     if (cleanUsername.length < 3) {
       setError("Elegí un usuario único de al menos 3 caracteres.");
       return;
@@ -3305,6 +3302,7 @@ function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, delet
     }
     updateActiveUser({
       name: cleanName,
+      displayName: cleanName,
       username: cleanUsername,
       bankAlias: bankAlias.trim(),
       bankCbu: bankCbu.trim(),
@@ -3399,8 +3397,8 @@ function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, delet
           />
         </div>
         <p className="settings-hint">Usuario para que te encuentren tus amigos.</p>
-        <label>Nombre visible</label>
-        <input value={name} maxLength={20} onChange={(event) => setName(event.target.value.trim() ? shortDisplayName(event.target.value).slice(0, 20) : "")} />
+        <label htmlFor="profile-visible-name">Nombre visible</label>
+        <input id="profile-visible-name" value={name} maxLength={80} onChange={(event) => setName(event.target.value)} />
         <p className="settings-hint">Nombre visible para tus amigos.</p>
         <label id="account-access-title">Cuenta y acceso</label>
         <section className="account-access-section" aria-labelledby="account-access-title">
@@ -3508,7 +3506,7 @@ function SettingsModal({ activeUser, appUsers, contacts, updateActiveUser, delet
                             checked={bankVisibleMemberIds.includes(member.id)}
                             onChange={() => toggleBankVisibleMember(member.id)}
                           />
-                          {shortDisplayName(member.name)}
+                          {visibleName(member.name)}
                         </label>
                       )) : (
                         <p className="settings-hint">Todavía no tenés amigos registrados en tu agenda.</p>
@@ -3565,7 +3563,10 @@ function fileToDataUrl(file) {
   });
 }
 
-function ArchivePanel({ files, setFiles, activeUser, monimonId }) {
+function ArchivePanel({ files, setFiles, activeUser, appUsers, monimonId }) {
+  const uploaderName = file => file.uploadedByMemberId
+    ? userLabel(file.uploadedByMemberId, appUsers)
+    : displayPersonName(file.uploadedBy || "Usuario", appUsers);
   const [dragging, setDragging] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
   const [galleryGroupBy, setGalleryGroupBy] = useState("uploadedBy");
@@ -3580,7 +3581,7 @@ function ArchivePanel({ files, setFiles, activeUser, monimonId }) {
       ? displayDate(debtDateKey({ date: file.createdAt }))
       : galleryGroupBy === "category"
         ? file.category || "General"
-        : file.uploadedBy || "Usuario";
+        : uploaderName(file);
     const existing = groups.find((group) => group.label === groupValue);
     if (existing) {
       existing.files.push(file);
@@ -3600,6 +3601,7 @@ function ArchivePanel({ files, setFiles, activeUser, monimonId }) {
       monimonId,
       createdAt: formatISODate(todayISO()),
       uploadedBy: activeUser?.name || "Usuario",
+      uploadedByMemberId: activeUser?.id || null,
       category: "General"
     })));
     setFiles((items) => [...nextFiles, ...items]);
@@ -3682,7 +3684,7 @@ function ArchivePanel({ files, setFiles, activeUser, monimonId }) {
                       <button type="button" className="archive-delete" onClick={() => deleteFile(file.id)}>
                         <Trash2 size={14} /> Eliminar
                       </button>
-                      <small>{file.createdAt} · {file.uploadedBy || "Usuario"} · {file.category || "General"} · {(file.size / 1024).toFixed(0)} KB</small>
+                      <small>{file.createdAt} · {uploaderName(file)} · {file.category || "General"} · {(file.size / 1024).toFixed(0)} KB</small>
                     </div>
                   </article>
                 ))}
@@ -3800,7 +3802,7 @@ function ShareMonimonModal({ group, members, monimonMembers = [], canInviteMembe
                 const isPending = membership?.status === "pending";
                 return (
                   <div className="share-agenda-row" key={member.id}>
-                    <PersonChip color={memberFrameColor(group, member.id)}>{shortDisplayName(member.name)}</PersonChip>
+                    <PersonChip color={memberFrameColor(group, member.id)}>{visibleName(member.name)}</PersonChip>
                     <button type="button" onClick={() => onInviteMember(member.id)} disabled={!canInviteMembers || alreadyInGroup}>
                       {isPending ? "Pendiente" : alreadyInGroup ? "En grupo" : "Invitar"}
                     </button>
@@ -3833,7 +3835,7 @@ function GroupSpace({ groups, appUsers, groupHubActionsOpen, setGroupHubActionsO
   const memberById = new Map(appUsers.map((member) => [member.id, member]));
   const creatorNameFor = (group) => {
     const creatorId = group.createdByMemberId || group.adminIds?.[0] || group.members?.[0];
-    return shortDisplayName(memberById.get(creatorId)?.name || creatorId || "USUARIO");
+    return visibleName(memberById.get(creatorId)?.name || creatorId || "USUARIO");
   };
   return (
     <section className="group-space">
@@ -3852,7 +3854,7 @@ function GroupSpace({ groups, appUsers, groupHubActionsOpen, setGroupHubActionsO
                   <b>{group.name}</b>
                   <span className="group-card-members">
                     {members.length
-                      ? members.map((member) => <PersonChip key={member.id} color={memberFrameColor(group, member.id)}>{shortDisplayName(member.name)}</PersonChip>)
+                      ? members.map((member) => <PersonChip key={member.id} color={memberFrameColor(group, member.id)}>{visibleName(member.name)}</PersonChip>)
                       : <PersonChip>Sin integrantes</PersonChip>}
                   </span>
                   <small>Creado por <strong>{creatorNameFor(group)}</strong></small>
@@ -4224,7 +4226,7 @@ function CreateMonimonModal({ onLinkMember, onLeaveGroup, activeUser, appUsers, 
             </div>
             {memberIds.map((memberId, index) => {
               const member = appUsers.find((user) => user.id === memberId);
-              const memberName = shortDisplayName(member?.name || (memberId === activeUser.id ? activeUser.name : "INTEGRANTE"));
+              const memberName = visibleName(member?.name || (memberId === activeUser.id ? activeUser.name : "INTEGRANTE"));
               const isOwnUser = memberId === activeUser.id;
               const isEditableGuest = isEditing && !isOwnUser && !member?.profileId;
               const membership = membershipByMemberId.get(memberId);
@@ -4293,7 +4295,7 @@ function CreateMonimonModal({ onLinkMember, onLeaveGroup, activeUser, appUsers, 
                       >
                         <option value="">Invitado</option>
                         {availableLinkUsers.map((user) => (
-                          <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>
+                          <option key={user.id} value={user.id}>{visibleName(user.name)}</option>
                         ))}
                       </select>
                     ) : (
@@ -5086,7 +5088,7 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
             <label>
               <span>Pagado por</span>
               <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
-                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{visibleName(user.name)}</option>)}
               </select>
             </label>
             {!isExpense ? (
@@ -5094,7 +5096,7 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
                 <span>Para</span>
                 <select value={toId} onChange={(event) => setToId(event.target.value)}>
                   {allowGroupTarget && <option value="group">GRUPO</option>}
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{visibleName(user.name)}</option>)}
                 </select>
               </label>
             ) : (
@@ -5558,7 +5560,7 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
             <label>
               <span>Pagado por</span>
               <select value={fromId} onChange={(event) => setFromId(event.target.value)}>
-                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+                {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{visibleName(user.name)}</option>)}
               </select>
             </label>
             {!isExpense ? (
@@ -5566,7 +5568,7 @@ function EditDebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonI
                 <span>Para</span>
                 <select value={toId} onChange={(event) => setToId(event.target.value)}>
                   {allowGroupTarget && <option value="group">GRUPO</option>}
-                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{shortDisplayName(user.name)}</option>)}
+                  {monimonMemberOptions.map((user) => <option key={user.id} value={user.id}>{visibleName(user.name)}</option>)}
                 </select>
               </label>
             ) : (
@@ -5769,7 +5771,7 @@ function ContactRow({ member, status = "active", actionLabel, actionClassName = 
     <div className="contact-row">
       <Avatar user={member} />
       <span>
-        <b>{shortDisplayName(member.name)}</b>
+        <b>{visibleName(member.name)}</b>
         <small>{caption}</small>
       </span>
       <button type="button" className={actionClassName} onClick={onAction}>{actionLabel}</button>
@@ -5966,7 +5968,7 @@ function PaymentRows({ payments, debts = [], activityLog = [], appUsers = [], ge
     const people = (movement.movementPeople || [])
       .filter((person) => person?.name && normalizedSearch(person.name) !== normalizedSearch("GRUPO"))
       .reduce((items, person) => {
-        const label = shortDisplayName(person.name);
+        const label = visibleName(person.name);
         if (!label || items.some((item) => normalizedSearch(item.label) === normalizedSearch(label))) return items;
         return [...items, {
           memberId: person.memberId,
@@ -6118,7 +6120,7 @@ function userLabel(userId, appUsers) {
   if (userId === "group") return "GRUPO";
   const userName = appUsers.find((user) => user.id === userId)?.name;
   if (!userName && String(userId || "").toLowerCase().startsWith("ghost-")) return "INTEGRANTE INVITADO";
-  return userName ? shortDisplayName(userName) : userId?.toUpperCase?.() || "Usuario";
+  return userName ? visibleName(userName) : userId?.toUpperCase?.() || "Usuario";
 }
 
 function RequestsPanel({ contactRequests = [], appUsers, approveContactRequest, rejectContactRequest, hideEmpty = false }) {
@@ -6132,7 +6134,7 @@ function RequestsPanel({ contactRequests = [], appUsers, approveContactRequest, 
     <div className="request-list">
       {orderedContactRequests.map((request) => {
         const requester = appUsers.find((user) => user.id === request.ownerProfileId);
-        const requesterName = shortDisplayName(requester?.name || userLabel(request.ownerProfileId, appUsers));
+        const requesterName = visibleName(requester?.name || userLabel(request.ownerProfileId, appUsers));
         return (
           <article key={`contact-${request.id}`} className="request-card pending">
             <div className="request-main">
