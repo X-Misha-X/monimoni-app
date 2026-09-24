@@ -1,4 +1,6 @@
 import json
+from copy import deepcopy
+from state_model import StateError, join_group, link_member, leave_group, require_admin, assign_invite_codes, validate_group_edits
 import os
 import re
 import sys
@@ -74,6 +76,7 @@ EMPTY_STATE = {
     "activityLog": [],
     "archiveFiles": [],
     "personalSpaceName": "PERSONAL",
+    "identityRequests": [],
 }
 
 
@@ -86,6 +89,7 @@ def json_response(handler, status, payload):
     handler.send_header("Content-Length", str(len(body)))
     handler.send_header("Access-Control-Allow-Origin", allowed_origin)
     handler.send_header("Vary", "Origin")
+    handler.send_header("Cache-Control", "no-store")
     handler.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
     handler.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
     handler.end_headers()
@@ -95,7 +99,12 @@ def json_response(handler, status, payload):
 def error_response(handler, error):
     traceback.print_exc()
     message = str(error) or error.__class__.__name__
-    json_response(handler, 500, {"error": message})
+    status = getattr(error, "status", 500)
+    if "Supabase Auth 401:" in message or "Supabase Auth 403:" in message:
+        status = 401
+    if "Supabase Auth 400:" in message:
+        status = 400
+    json_response(handler, status, {"error": message})
 
 
 def supabase_headers(extra=None):
@@ -221,7 +230,7 @@ def require_valid_token(token):
     return auth_request("GET", "user", access_token=token)
 
 
-def get_state():
+def get_legacy_combined_state():
     rows = supabase_request("GET", f"group_state?key=eq.{STATE_KEY}&select=data")
     if not rows:
         legacy_state = EMPTY_STATE
@@ -624,7 +633,7 @@ def validate_state(state):
         validate_member_in_monimon(state, debt.get("toMemberId") or debt.get("to"), monimon_id)
     for request in state.get("paymentRequests", []):
         monimon_id = request.get("monimonId")
-        if not monimon_id:
+        if not monimon_id or request.get('status') == 'void':
             continue
         requested_by = request.get("requestedByMemberId")
         if request.get("status") == "approved" and requested_by and request.get("requiredApproverMemberIds"):
@@ -701,38 +710,63 @@ def migrate_legacy_state(state):
     return profiles, members, monimons, monimon_members
 
 
-def put_state(state):
-    profiles, members, monimons, monimon_members = migrate_legacy_state(state)
-    personal_space_name = state.get("personalSpaceName")
-    if not isinstance(personal_space_name, str) or not personal_space_name.strip():
-        personal_space_name = "PERSONAL"
-    clean_state = {
-        "profiles": profiles,
-        "members": members,
-        "monimons": monimons,
-        "monimonMembers": monimon_members,
-        "debts": state.get("debts") if isinstance(state.get("debts"), list) else [],
-        "payments": state.get("payments") if isinstance(state.get("payments"), list) else [],
-        "paymentRequests": state.get("paymentRequests") if isinstance(state.get("paymentRequests"), list) else [],
-        "contacts": state.get("contacts") if isinstance(state.get("contacts"), list) else [],
-        "activityLog": normalize_activity_log_records(state.get("activityLog")),
-        "archiveFiles": state.get("archiveFiles") if isinstance(state.get("archiveFiles"), list) else [],
-        "personalSpaceName": personal_space_name.strip()[:32],
-    }
-    validate_state(clean_state)
-    payload = {"key": STATE_KEY, "data": clean_state}
-    supabase_request(
-        "POST",
-        "group_state",
-        [payload],
-        {"Prefer": "resolution=merge-duplicates,return=minimal"},
-    )
-    try:
-        sync_normalized_state(clean_state)
-        sync_normalized_monimon_deletions(clean_state)
-    except RuntimeError as error:
-        print(f"Normalized sync warning: {error}", flush=True)
-    return clean_state
+def get_state():
+    # The JSON document is now the canonical source. Combining it with old
+    # normalized rows used to resurrect removed memberships and discard splits.
+    rows = supabase_request("GET", f"group_state?key=eq.{urllib.parse.quote(STATE_KEY, safe='')}&select=data")
+    if rows:
+        raw = rows[0].get("data") or {}
+        state = {**deepcopy(EMPTY_STATE), **raw}
+        if "groups" in raw and "monimons" not in raw:
+            state["monimons"] = raw["groups"]
+    else:
+        state = {**deepcopy(EMPTY_STATE), **(get_normalized_state() or {})}
+    for group in state["monimons"]:
+        rows = [m for m in state["monimonMembers"] if m.get("monimonId") == group["id"]]
+        if rows:
+            group["members"] = list(dict.fromkeys(m["memberId"] for m in rows if m.get("status") != "removed"))
+        if not group.get("adminIds"):
+            active = [m for m in rows if m.get("status") == "active"]
+            group["adminIds"] = [m["memberId"] for m in active if m.get("role") in ("admin", "owner")]
+            if not group["adminIds"]:
+                registered = {m["id"] for m in state["members"] if m.get("profileId")}
+                group["adminIds"] = [m["memberId"] for m in active if m["memberId"] in registered][:1]
+    assign_invite_codes(state)
+    state["_revision"] = state.get("_revision")
+    state["_protocol"] = 2
+    return state
+
+
+def ensure_auth_profile(state, user):
+    user_id = user["id"]
+    meta = user.get("user_metadata") or {}
+    name = meta.get("display_name") or meta.get("full_name") or meta.get("name") or user.get("email", "Usuario").split("@")[0]
+    if not any(p.get("id") == user_id for p in state["profiles"]):
+        state["profiles"].append({"id": user_id, "name": name, "displayName": name,
+            "username": normalize_username(meta.get("username") or name) + user_id[:4],
+            "email": user.get("email", ""), "authProvider": (user.get("app_metadata") or {}).get("provider", "email"), "role": "user"})
+    if not any(m.get("id") == user_id for m in state["members"]):
+        state["members"].append({"id": user_id, "profileId": user_id, "displayName": name, "status": "active"})
+
+
+def put_state(state, revision):
+    clean = {key: deepcopy(state.get(key, default)) for key, default in EMPTY_STATE.items()}
+    for key, default in EMPTY_STATE.items():
+        if isinstance(default, list) and not isinstance(clean[key], list):
+            raise StateError("Formato de estado inválido.")
+    validate_state(clean)
+    clean["_revision"] = str(uuid.uuid4())
+    clean["_protocol"] = 2
+    encoded_key = urllib.parse.quote(STATE_KEY, safe='')
+    predicate = 'is.null' if revision is None else 'eq.' + urllib.parse.quote(str(revision), safe='')
+    rows = supabase_request("PATCH", f"group_state?key=eq.{encoded_key}&data->>_revision={predicate}",
+        {"data": clean}, {"Prefer": "return=representation"})
+    if not rows and revision is None:
+        rows = supabase_request("POST", "group_state?on_conflict=key", [{"key": STATE_KEY, "data": clean}],
+            {"Prefer": "resolution=ignore-duplicates,return=representation"})
+    if not rows:
+        raise StateError("El grupo cambió mientras guardabas. Actualizá e intentá de nuevo.", 409)
+    return clean
 
 
 def sync_normalized_state(state):
@@ -960,69 +994,14 @@ def mark_stale_normalized_rows_deleted(table, group_ids, active_ids):
             )
 
 
-def delete_monimon(monimon_id):
+def delete_monimon(monimon_id, actor):
     if not monimon_id or monimon_id == "personal":
-        raise RuntimeError("No se puede eliminar el espacio personal.")
-
-    encoded_id = urllib.parse.quote(str(monimon_id), safe="")
-    deleted_names = set()
-    if optional_supabase_rows("groups?select=id") is not None:
-        rows = optional_supabase_rows(f"groups?id=eq.{encoded_id}&select=name")
-        deleted_names = {
-            row.get("name")
-            for row in rows or []
-            if row.get("name")
-        }
-        delete_normalized_monimon_children(encoded_id)
-        supabase_request(
-            "PATCH",
-            f"groups?id=eq.{encoded_id}",
-            {"deleted_at": datetime.now(timezone.utc).isoformat()},
-            headers={"Prefer": "return=minimal"},
-        )
-
-    rows = supabase_request("GET", f"group_state?key=eq.{STATE_KEY}&select=data")
-    data = (rows[0].get("data") if rows else {}) or {}
-    if "groups" in data and "monimons" not in data:
-        data["monimons"] = data["groups"]
-
-    removed_legacy_ids = {
-        item.get("id")
-        for item in data.get("monimons", [])
-        if item.get("id") == monimon_id or item.get("name") in deleted_names
-    }
-    removed_ids = {monimon_id, *removed_legacy_ids}
-    data["monimons"] = [
-        item for item in data.get("monimons", [])
-        if item.get("id") not in removed_ids
-    ]
-    data["monimonMembers"] = [
-        item for item in data.get("monimonMembers", [])
-        if item.get("monimonId") not in removed_ids
-    ]
-    data["debts"] = [
-        item for item in data.get("debts", [])
-        if item.get("monimonId") not in removed_ids
-    ]
-    data["payments"] = [
-        item for item in data.get("payments", [])
-        if item.get("monimonId") not in removed_ids
-    ]
-    data["paymentRequests"] = [
-        item for item in data.get("paymentRequests", [])
-        if item.get("monimonId") not in removed_ids
-    ]
-    data["archiveFiles"] = [
-        item for item in data.get("archiveFiles", [])
-        if item.get("monimonId") not in removed_ids
-    ]
-    payload = {"key": STATE_KEY, "data": {**EMPTY_STATE, **data}}
-    supabase_request(
-        "POST",
-        "group_state",
-        [payload],
-        {"Prefer": "resolution=merge-duplicates,return=minimal"},
-    )
+        raise StateError("No se puede eliminar el espacio personal.")
+    state = get_state()
+    require_admin(state, monimon_id, actor)
+    for key in ("monimons", "monimonMembers", "debts", "payments", "paymentRequests", "archiveFiles", "identityRequests"):
+        state[key] = [item for item in state[key] if (item.get("id") if key == "monimons" else item.get("monimonId")) != monimon_id]
+    put_state(state, state.get("_revision"))
     return {"ok": True}
 
 
@@ -1081,15 +1060,17 @@ class Handler(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             if path == "/api/health":
-                json_response(self, 200, {"ok": True, "supabaseConfigured": bool(SUPABASE_URL and SUPABASE_KEY and SUPABASE_ANON_KEY)})
+                json_response(self, 200, {"ok": True, "stateProtocol": 2, "supabaseConfigured": bool(SUPABASE_URL and SUPABASE_KEY and SUPABASE_ANON_KEY)})
                 return
             if path == "/api/state":
                 token = bearer_token(self)
                 if not token:
                     json_response(self, 401, {"error": "Missing session token"})
                     return
-                require_valid_token(token)
-                json_response(self, 200, get_state())
+                user = require_valid_token(token)
+                state = get_state()
+                ensure_auth_profile(state, user)
+                json_response(self, 200, state)
                 return
             json_response(self, 404, {"error": "Not found"})
         except Exception as error:
@@ -1105,10 +1086,20 @@ class Handler(BaseHTTPRequestHandler):
             if not token:
                 json_response(self, 401, {"error": "Missing session token"})
                 return
-            require_valid_token(token)
+            user = require_valid_token(token)
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
-            json_response(self, 200, put_state(payload))
+            if payload.get("protocol") != 2:
+                json_response(self, 409, {"error": "Hay una nueva versión de MONI MON! Recargá esta pestaña antes de guardar."})
+                return
+            current = get_state()
+            if payload.get("revision") != current.get("_revision"):
+                ensure_auth_profile(current, user)
+                json_response(self, 409, {"error": "Hay cambios nuevos en el grupo.", "state": current})
+                return
+            incoming = payload.get("state") or {}
+            validate_group_edits(current, incoming, user['id'])
+            json_response(self, 200, put_state(incoming, payload.get("revision")))
         except Exception as error:
             error_response(self, error)
 
@@ -1117,6 +1108,31 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+            if path.startswith("/api/groups/"):
+                user = require_valid_token(bearer_token(self))
+                state = get_state()
+                if payload.get("revision") != state.get("_revision"):
+                    ensure_auth_profile(state, user)
+                    json_response(self, 409, {"error": "El grupo cambió. Actualizamos los datos; repetí la acción.", "state": state})
+                    return
+                ensure_auth_profile(state, user)
+                actor = user["id"]
+                if path == "/api/groups/join":
+                    join_group(state, actor, payload.get("inviteCode"), payload.get("guestId"))
+                elif path == "/api/groups/link-member":
+                    link_member(state, actor, payload.get("groupId"), payload.get("guestId"), payload.get("targetId"))
+                elif path == "/api/groups/leave":
+                    leave_group(state, actor, payload.get("groupId"))
+                elif path == "/api/groups/reject-identity":
+                    request = next((r for r in state["identityRequests"] if r['id'] == payload.get('requestId')), None)
+                    if not request:
+                        raise StateError("Solicitud no encontrada.", 404)
+                    require_admin(state, request['monimonId'], actor)
+                    request['status'] = 'rejected'
+                else:
+                    raise StateError("Not found", 404)
+                json_response(self, 200, put_state(state, payload.get("revision")))
+                return
             if path == "/api/auth/signup":
                 email = payload.get("email", "")
                 username = normalize_username(payload.get("username") or payload.get("name") or email.split("@")[0])
@@ -1215,8 +1231,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not token:
                     json_response(self, 401, {"error": "Missing session token"})
                     return
-                require_valid_token(token)
-                json_response(self, 200, delete_monimon(payload.get("id")))
+                user = require_valid_token(token)
+                json_response(self, 200, delete_monimon(payload.get("id"), user["id"]))
                 return
             json_response(self, 404, {"error": "Not found"})
         except Exception as error:

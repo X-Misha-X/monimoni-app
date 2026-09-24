@@ -6264,3 +6264,34 @@ button {
     width: 100%;
   }
 }
+.notifications-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  color: var(--fondo-panel);
+  background: transparent;
+}
+.notifications-trigger:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.notification-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  padding: 2px 5px;
+  border-radius: 12px;
+  background: #9e334f;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+.global-requests-modal { width: min(560px, calc(100vw - 32px)); max-height: 85vh; overflow-y: auto; }
+.identity-request { padding: 16px 0; border-bottom: 1px solid currentColor; }
+.identity-request p + p { margin-top: 8px; font-size: .9rem; }
+.identity-options { display: grid; gap: 12px; margin: 20px 0; padding: 16px; border: 1px solid currentColor; border-radius: 12px; }
+.identity-options label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.identity-options input { width: 18px; height: 18px; flex: 0 0 18px; }
+.app-toast-error button { margin-left: 12px; text-decoration: underline; }

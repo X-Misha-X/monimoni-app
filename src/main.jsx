@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import {
@@ -43,6 +43,9 @@ import {
   UserRound,
   X
 } from "lucide-react";
+import { createApiClient, readSession, storeSession, rememberPreference, setRememberPreference, tokenExpiry } from "./session.js";
+import { useSharedState } from "./use-shared-state.js";
+import { freezeExpenseParticipants } from "./shared-state.js";
 import "./styles.css";
 import "./theme-editor.css";
 
@@ -109,8 +112,7 @@ const navItems = [
   { id: "gastos", label: "Gastos", icon: ListChecks },
   { id: "pago", label: "Liquidaciones", icon: ReceiptText },
   { id: "pagos", label: "Historial", icon: History },
-  { id: "archivo", label: "Archivo", icon: Archive },
-  { id: "solicitudes", label: "Solicitudes", icon: Bell }
+  { id: "archivo", label: "Archivo", icon: Archive }
 ];
 
 const groupIconOptions = [
@@ -285,20 +287,7 @@ function shiftMonth(isoMonth, offset) {
   return date.toISOString().slice(0, 7);
 }
 
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || "No se pudo conectar con el backend.");
-  }
-  return payload;
-}
+const apiRequest = createApiClient(API_BASE_URL);
 
 function normalizeUsername(value = "") {
   return String(value)
@@ -442,7 +431,7 @@ function normalizeDebts(items) {
         splitPercentages: item.splitPercentages && typeof item.splitPercentages === "object" ? item.splitPercentages : {},
         amount: Number(item.amount) || 0,
         currency: item.currency || "ARS",
-        date: item.date || formatISODate(todayISO()),
+        date: item.date || "",
         status: item.status || "open",
         kind: item.kind === "loan" ? "loan" : "expense",
         monimonId: item.monimonId || ""
@@ -460,7 +449,7 @@ function normalizePayments(items) {
         detail: item.detail || "General",
         amount: Number(item.amount) || 0,
         currency: item.currency || "ARS",
-        date: item.date || formatISODate(todayISO()),
+        date: item.date || "",
         monimonId: item.monimonId || ""
       }))
     : [];
@@ -481,10 +470,10 @@ function normalizePaymentRequests(items) {
         detail: item.detail || "General",
         amount: Number(item.amount) || 0,
         currency: item.currency || "ARS",
-        date: item.date || formatISODate(todayISO()),
+        date: item.date || "",
         monimonId: item.monimonId || "",
         status: item.status || "pending",
-        createdAt: item.createdAt || new Date().toISOString()
+        createdAt: item.createdAt || ""
       }))
     : [];
 }
@@ -554,7 +543,7 @@ function normalizeMonimonMembers(items) {
           status: item.status === "invited" ? "pending" : ["active", "pending", "removed"].includes(item.status) ? item.status : "active",
           source: item.source || "direct",
           invitedByMemberId: item.invitedByMemberId || null,
-          createdAt: item.createdAt || new Date().toISOString()
+          createdAt: item.createdAt || ""
         }))
     : [];
 }
@@ -569,7 +558,7 @@ function normalizeContacts(items) {
           memberId: item.memberId,
           nickname: item.nickname || "",
           status: item.status || "active",
-          createdAt: item.createdAt || new Date().toISOString()
+          createdAt: item.createdAt || ""
         }))
     : [];
 }
@@ -588,8 +577,8 @@ function normalizeActivityLog(items) {
         destinationMemberId: item.destinationMemberId || "",
         targetMemberId: item.targetMemberId || "",
         balanceDelta: Number(item.balanceDelta) || 0,
-        date: item.date || formatISODate(todayISO()),
-        createdAt: item.createdAt || new Date().toISOString()
+        date: item.date || "",
+        createdAt: item.createdAt || ""
       }))
     : [];
 }
@@ -604,7 +593,7 @@ function normalizeArchiveFiles(items) {
           size: Number(item.size) || 0,
           dataUrl: item.dataUrl,
           monimonId: item.monimonId || "",
-          createdAt: item.createdAt || formatISODate(todayISO()),
+          createdAt: item.createdAt || "",
           uploadedBy: item.uploadedBy || "Usuario",
           category: item.category || "General"
         }))
@@ -936,12 +925,46 @@ function calendarDays(isoMonth) {
   return days;
 }
 
+function normalizeSharedState(state) {
+  return {
+    profiles: normalizeProfiles(state.profiles), members: normalizeMembers(state.members),
+    monimons: normalizeMonimons(state.monimons), monimonMembers: normalizeMonimonMembers(state.monimonMembers),
+    debts: normalizeDebts(state.debts), payments: normalizePayments(state.payments),
+    paymentRequests: normalizePaymentRequests(state.paymentRequests), contacts: normalizeContacts(state.contacts),
+    activityLog: normalizeActivityLog(state.activityLog), archiveFiles: normalizeArchiveFiles(state.archiveFiles),
+    identityRequests: state.identityRequests || []
+  };
+}
+
 function App() {
-  const [session, setSession] = useState(null);
-  const [appUsers, setAppUsers] = useState(() => normalizeProfiles(initialProfiles));
-  const [members, setMembers] = useState(() => normalizeMembers(initialMembers));
-  const [monimons, setMonimons] = useState(() => normalizeMonimons(initialMonimons));
-  const [monimonMembers, setMonimonMembers] = useState(() => normalizeMonimonMembers(initialMonimonMembers));
+  const [session, setSession] = useState(readSession);
+  const [rememberMe, setRememberMe] = useState(rememberPreference);
+  const authenticatedRequest = useCallback((path, options = {}) => apiRequest(path, {
+    ...options, headers: { ...options.headers, Authorization: `Bearer ${readSession()?.accessToken || ""}` }
+  }), []);
+  const shared = useSharedState(session?.userId, authenticatedRequest, normalizeSharedState);
+  const { profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, activityLog, archiveFiles, identityRequests } = shared.data;
+  const { profiles: setAppUsers, members: setMembers, monimons: setMonimons, monimonMembers: setMonimonMembers,
+    debts: setDebts, payments: setPayments, paymentRequests: setPaymentRequests, contacts: setContacts,
+    activityLog: setActivityLog, archiveFiles: setArchiveFiles } = shared.setters;
+  const stateHydrated = !shared.status.loading;
+  const stateLoadFailed = shared.status.failed;
+  const saveError = shared.status.error;
+  useEffect(() => {
+    const changed = () => setSession(readSession());
+    window.addEventListener("monimon-session", changed);
+    window.addEventListener("storage", changed);
+    const refresh = () => { if (readSession()) apiRequest.refresh().catch(() => {}); };
+    const timer = window.setInterval(refresh, 60000);
+    window.addEventListener("focus", refresh);
+    refresh();
+    return () => {
+      window.removeEventListener("monimon-session", changed);
+      window.removeEventListener("storage", changed);
+      window.removeEventListener("focus", refresh);
+      window.clearInterval(timer);
+    };
+  }, []);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
@@ -952,11 +975,6 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeView, setActiveView] = useState("resumen");
-  const [debts, setDebts] = useState(() => normalizeDebts(initialDebts));
-  const [payments, setPayments] = useState(() => normalizePayments(initialPayments));
-  const [paymentRequests, setPaymentRequests] = useState(() => normalizePaymentRequests(initialPaymentRequests));
-  const [contacts, setContacts] = useState(() => normalizeContacts(initialContacts));
-  const [activityLog, setActivityLog] = useState(() => normalizeActivityLog(initialActivityLog));
   const [selectedDebtIds, setSelectedDebtIds] = useState([]);
   const [manualAmount, setManualAmount] = useState("");
   const [paymentCurrency, setPaymentCurrency] = useState("ARS");
@@ -965,7 +983,6 @@ function App() {
   const [showNewPayment, setShowNewPayment] = useState(false);
   const [showNewDebt, setShowNewDebt] = useState(false);
   const [paymentError, setPaymentError] = useState("");
-  const [archiveFiles, setArchiveFiles] = useState(() => normalizeArchiveFiles([]));
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [profileModal, setProfileModal] = useState(null);
   const [showContacts, setShowContacts] = useState(false);
@@ -975,13 +992,7 @@ function App() {
   const [selectedMonimonId, setSelectedMonimonId] = useState("");
   const [showCreateMonimon, setShowCreateMonimon] = useState(false);
   const [editingMonimonId, setEditingMonimonId] = useState(null);
-  const [backendOnline, setBackendOnline] = useState(false);
-  const [stateHydrated, setStateHydrated] = useState(false);
-  const [stateLoadFailed, setStateLoadFailed] = useState(false);
-  const [stateLoadRetryTick, setStateLoadRetryTick] = useState(0);
   const [backendWakeElapsed, setBackendWakeElapsed] = useState(0);
-  const [saveError, setSaveError] = useState("");
-  const [saveRetryTick, setSaveRetryTick] = useState(0);
   const [appTheme, setAppTheme] = useState(() => {
     const savedTheme = window.localStorage.getItem("monimon-theme");
     const savedVersion = window.localStorage.getItem("monimon-theme-version");
@@ -990,8 +1001,6 @@ function App() {
     }
     return appThemeIds.has(savedTheme) ? savedTheme : defaultAppTheme;
   });
-  const backendLoaded = useRef(false);
-  const saveRetryTimer = useRef(null);
 
     const activeUser = session ? appUsers.find((user) => user.id === session.userId) || session.user : null;
   const otherUser = activeUser ? appUsers.find((user) => user.id !== activeUser.id) : null;
@@ -1018,13 +1027,14 @@ function App() {
       .map((item) => item.memberId);
     return {
       ...monimon,
-      members: [...new Set(persistedMemberIds.length ? persistedMemberIds : (monimon.members || []))]
+      members: [...new Set(monimonMembers.some(item => item.monimonId === monimon.id) ? persistedMemberIds : (monimon.members || []))]
     };
   }), [monimons, monimonMembers]);
 
   function replaceMonimonsFromOptions(nextMonimonsOrUpdater) {
     const nextMonimons = typeof nextMonimonsOrUpdater === "function" ? nextMonimonsOrUpdater(monimonOptions) : nextMonimonsOrUpdater;
     const normalizedMonimons = normalizeMonimonOptions(nextMonimons);
+    setDebts(items => monimonOptions.reduce((result, group) => freezeExpenseParticipants(result, group.id, group.members.filter(id => !monimonMembers.some(m => m.monimonId === group.id && m.memberId === id && m.status !== "active"))), items));
     setMonimons(normalizedMonimons.map(({ members: _members, ...monimon }) => monimon));
     setMonimonMembers((existingMemberships) => {
       const nextMonimonIds = new Set(normalizedMonimons.map((monimon) => monimon.id));
@@ -1052,6 +1062,7 @@ function App() {
             ...(previous || {}),
             monimonId: monimon.id,
             memberId,
+            role: monimon.adminIds?.includes(memberId) ? "admin" : "member",
             status,
             source: previous?.source || (isInvitedProfile ? "agenda" : member?.memberStatus === "ghost" ? "manual" : "direct"),
             invitedByMemberId: previous?.invitedByMemberId || (isInvitedProfile ? activeUser?.id || null : null),
@@ -1064,117 +1075,17 @@ function App() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-    let wakeTimer = null;
-    if (!session?.accessToken) {
-      backendLoaded.current = false;
-      setBackendOnline(false);
-      setStateLoadFailed(false);
-      setStateHydrated(true);
-      setBackendWakeElapsed(0);
-      return () => {};
-    }
-    setStateHydrated(false);
-    setStateLoadFailed(false);
+    if (stateHydrated) return;
     setBackendWakeElapsed(0);
-    wakeTimer = window.setInterval(() => {
-      setBackendWakeElapsed((seconds) => seconds + 1);
-    }, 1000);
-    const headers = session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {};
-    apiRequest("/api/state", { headers })
-      .then((state) => {
-        if (cancelled) return;
-        if (wakeTimer) window.clearInterval(wakeTimer);
-        if (Array.isArray(state.profiles)) setAppUsers(normalizeProfiles(state.profiles));
-        if (Array.isArray(state.members)) setMembers(normalizeMembers(state.members));
-        if (Array.isArray(state.monimons)) setMonimons(normalizeMonimons(state.monimons));
-        if (Array.isArray(state.monimonMembers)) setMonimonMembers(normalizeMonimonMembers(state.monimonMembers));
-        if (Array.isArray(state.groups) && state.groups.length && !state.monimons?.length) replaceMonimonsFromOptions(normalizeMonimonOptions(state.groups));
-        if (Array.isArray(state.debts)) setDebts(normalizeDebts(state.debts));
-        if (Array.isArray(state.payments)) setPayments(normalizePayments(state.payments));
-        if (Array.isArray(state.paymentRequests)) setPaymentRequests(normalizePaymentRequests(state.paymentRequests));
-        if (Array.isArray(state.contacts)) setContacts(normalizeContacts(state.contacts));
-        if (Array.isArray(state.activityLog)) setActivityLog(normalizeActivityLog(state.activityLog));
-        if (Array.isArray(state.archiveFiles)) setArchiveFiles(normalizeArchiveFiles(state.archiveFiles));
-        backendLoaded.current = true;
-        setBackendOnline(true);
-        setSaveError("");
-        setStateHydrated(true);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        if (wakeTimer) window.clearInterval(wakeTimer);
-        backendLoaded.current = false;
-        setBackendOnline(false);
-        setStateLoadFailed(true);
-        setStateHydrated(true);
-      });
-    return () => {
-      cancelled = true;
-      if (wakeTimer) window.clearInterval(wakeTimer);
-    };
-  }, [session?.accessToken, stateLoadRetryTick]);
-
-  useEffect(() => {
-    if (!backendLoaded.current) return;
-    const timeoutId = window.setTimeout(() => {
-      apiRequest("/api/state", {
-        method: "PUT",
-        headers: session?.accessToken ? { Authorization: `Bearer ${session.accessToken}` } : {},
-        body: JSON.stringify({ profiles: appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, activityLog, archiveFiles })
-      })
-        .then(() => {
-          setBackendOnline(true);
-          setSaveError("");
-          if (saveRetryTimer.current) {
-            window.clearTimeout(saveRetryTimer.current);
-            saveRetryTimer.current = null;
-          }
-        })
-        .catch(() => {
-          setSaveError("No pude guardar los ultimos cambios. Revisa la conexion antes de seguir.");
-          if (!saveRetryTimer.current) {
-            saveRetryTimer.current = window.setTimeout(() => {
-              saveRetryTimer.current = null;
-              setSaveRetryTick((tick) => tick + 1);
-            }, 2500);
-          }
-        });
-    }, 350);
-    return () => window.clearTimeout(timeoutId);
-  }, [saveRetryTick, session?.accessToken, appUsers, members, monimons, monimonMembers, debts, payments, paymentRequests, contacts, activityLog, archiveFiles]);
-  useEffect(() => () => {
-    if (saveRetryTimer.current) window.clearTimeout(saveRetryTimer.current);
-  }, []);
+    const timer = window.setInterval(() => setBackendWakeElapsed(value => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [stateHydrated]);
 
   useEffect(() => {
     window.localStorage.setItem("monimon-theme", appTheme);
     window.localStorage.setItem("monimon-theme-version", themePreferenceVersion);
   }, [appTheme]);
 
-  useEffect(() => {
-    if (!session?.accessToken) return;
-    let cancelled = false;
-    apiRequest("/api/auth/user", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${session.accessToken}` },
-      body: JSON.stringify({ access_token: session.accessToken })
-    })
-      .then((user) => {
-        if (cancelled) return;
-        const profile = profileFromAuthUser(user);
-        setAppUsers((items) => (
-          items.some((item) => item.id === profile.id)
-            ? items.map((item) => (item.id === profile.id ? { ...item, ...profile } : item))
-            : [profile, ...items]
-        ));
-        setSession((current) => current?.accessToken === session.accessToken ? { ...current, user: profile } : current);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [session?.accessToken]);
   useEffect(() => {
     const sharedSpace = inviteTokenFromText(window.location.href);
     const matchedGroup = sharedSpace
@@ -1221,28 +1132,17 @@ function App() {
             usedUsernames
           )
         };
-    const member = memberFromProfile(profile);
-    setAppUsers((items) => {
-      const exists = items.some((user) => user.id === profile.id);
-      return exists
-        ? items.map((user) => (user.id === profile.id ? { ...profile, ...user, email: profile.email, authProvider: profile.authProvider, username: user.username || profile.username } : user))
-        : [profile, ...items];
-    });
-    setMembers((items) => {
-      const exists = items.some((item) => item.id === member.id);
-      return exists
-        ? items.map((item) => (item.id === member.id ? { ...member, ...item, profileId: profile.id, username: item.username || member.username, email: item.email || member.email } : item))
-        : [member, ...items];
-    });
-    setSession({
+    const nextSession = {
       userId: profile.id,
       user: profile,
       accessToken: payload.access_token,
       refreshToken: payload.refresh_token,
       tokenType: payload.token_type || "bearer",
-      expiresAt: payload.expires_at || null,
+      expiresAt: payload.expires_at || tokenExpiry(payload.access_token),
       createdAt: Date.now()
-    });
+    };
+    storeSession(nextSession);
+    setSession(nextSession);
     setSelectedMonimonId("");
     setActiveView("resumen");
     setAuthPassword("");
@@ -1253,7 +1153,13 @@ function App() {
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
-    if (!accessToken) return;
+    if (!accessToken) {
+      if (params.get("error")) {
+        setError(params.get("error_description") || "No se pudo iniciar sesión con Google.");
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+      return;
+    }
     const tokenUser = authUserFromAccessToken(accessToken);
     if (tokenUser) {
       rememberAuthSession({
@@ -1294,6 +1200,7 @@ function App() {
       setError("Ingresá tu email para iniciar sesión.");
       return;
     }
+    setRememberPreference(rememberMe);
     setAuthLoading(true);
     try {
       const payload = await apiRequest(authMode === "login" ? "/api/auth/login" : "/api/auth/signup", {
@@ -1323,6 +1230,7 @@ function App() {
   }
 
   async function loginWithGoogle() {
+    setRememberPreference(rememberMe);
     setError("");
     setAuthLoading(true);
     try {
@@ -1391,6 +1299,7 @@ function App() {
   }
 
   function clearAuthSession() {
+    storeSession(null);
     setSession(null);
     setAuthPassword("");
     setAuthPasswordConfirm("");
@@ -1424,11 +1333,16 @@ function App() {
   }
 
   async function logout() {
+    if (shared.dirty) {
+      await shared.sync();
+      // Avoid discarding a draft when the server is unavailable or conflicted.
+      if (!window.confirm("¿Cerrar sesión? Si hay cambios pendientes, esperá a que desaparezca el aviso de guardado antes de salir.")) return;
+    }
     const accessToken = session?.accessToken;
     clearAuthSession();
     if (!accessToken) return;
     try {
-      await apiRequest("/api/auth/logout", {
+      await apiRequest.raw("/api/auth/logout", {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
         body: JSON.stringify({ access_token: accessToken })
@@ -1568,7 +1482,7 @@ function App() {
         toMemberId: toId,
         title: title.trim(),
         category: category || (kind === "loan" ? "loan" : "general"),
-        splitParticipantIds,
+        splitParticipantIds: splitParticipantIds.length ? splitParticipantIds : monimonMembers.filter(m => m.monimonId === selectedMonimonId && m.status === "active").map(m => m.memberId),
         splitMode,
         splitAmounts,
         splitPercentages,
@@ -1623,6 +1537,8 @@ function App() {
             setAuthMode={setAuthMode}
             showPassword={showPassword}
             setShowPassword={setShowPassword}
+            rememberMe={rememberMe}
+            setRememberMe={setRememberMe}
             authLoading={authLoading}
             error={error}
             submitLogin={submitLogin}
@@ -1658,11 +1574,7 @@ function App() {
         elapsed={backendWakeElapsed}
         failed
         appTheme={appTheme}
-        onRetry={() => {
-          setStateHydrated(false);
-          setStateLoadFailed(false);
-          setStateLoadRetryTick((tick) => tick + 1);
-        }}
+        onRetry={shared.reload}
       />
     );
   }
@@ -1732,6 +1644,10 @@ function App() {
       registerDebt={registerDebt}
       deleteMonimonFromBackend={deleteMonimonFromBackend}
       saveError={saveError}
+      syncConflict={shared.status.conflict}
+      reloadSharedState={shared.reload}
+      groupAction={shared.action}
+      identityRequests={identityRequests}
       logout={logout}
       deleteAccount={deleteAccount}
       updateAccountEmail={updateAccountEmail}
@@ -1742,7 +1658,10 @@ function App() {
   );
 }
 
+
 function LoginCard({
+  rememberMe,
+  setRememberMe,
   authEmail,
   setAuthEmail,
   authPassword,
@@ -1867,7 +1786,7 @@ function LoginCard({
         {!isRegister && (
           <div className="auth-options-row">
             <label className="remember-session">
-              <input type="checkbox" />
+              <input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} />
               <span>Mantenerse conectado</span>
             </label>
             <button type="button" className="forgot-password-link">Olvidaste tu contraseña?</button>
@@ -1951,6 +1870,7 @@ function BackendWakeScreen({ elapsed = 0, failed = false, onRetry, appTheme = de
 }
 
 function Dashboard({
+  groupAction, identityRequests, syncConflict, reloadSharedState,
   activeUser,
   otherUser,
   appUsers,
@@ -2022,6 +1942,11 @@ function Dashboard({
   setAppTheme
 }) {
   const [toastMessage, setToastMessage] = useState("");
+  const [showRequests, setShowRequests] = useState(false);
+  const [invitePreview, setInvitePreview] = useState(null);
+  const [joiningAs, setJoiningAs] = useState("");
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [groupError, setGroupError] = useState("");
   const [groupHubActionsOpen, setGroupHubActionsOpen] = useState(false);
   const [showJoinMonimon, setShowJoinMonimon] = useState(false);
   const [showShareMonimon, setShowShareMonimon] = useState(false);
@@ -2042,7 +1967,7 @@ function Dashboard({
   }, [activeGroups, selectedMonimonId, setSelectedMonimonId]);
   const selectedMonimon = activeGroups.find((monimon) => monimon.id === selectedMonimonId);
   const scopedDebts = selectedMonimon ? debts.filter((debt) => debt.monimonId === selectedMonimonId) : [];
-  const scopedPayments = selectedMonimon ? payments.filter((payment) => payment.monimonId === selectedMonimonId) : [];
+  const scopedPayments = selectedMonimon ? payments.filter((payment) => payment.monimonId === selectedMonimonId && payment.status !== "void") : [];
   const scopedPaymentRequests = selectedMonimon ? paymentRequests.filter((request) => request.monimonId === selectedMonimonId) : [];
   const openDebts = scopedDebts.filter((debt) => debt.status === "open");
   const openExpenses = openDebts.filter((debt) => debt.kind !== "loan");
@@ -2053,7 +1978,12 @@ function Dashboard({
   const selectedAdminIds = selectedMonimon?.adminIds?.length ? selectedMonimon.adminIds : selectedMonimon?.members?.slice(0, 1) || [];
   const canManageSelectedGroup = selectedAdminIds.includes(activeUser.id);
   const memberById = useMemo(() => new Map(appUsers.map((member) => [member.id, member])), [appUsers]);
-  const membersForSelectedMonimon = selectedMonimon ? selectedMonimon.members.map((id) => memberById.get(id)).filter(Boolean) : [];
+  const historicMemberIds = selectedMonimon ? [...new Set([
+    ...selectedMonimon.members.filter(id => !monimonMembers.some(m => m.monimonId === selectedMonimon.id && m.memberId === id && m.status !== "active")),
+    ...scopedDebts.filter(d => d.status !== "void").flatMap(d => [d.fromMemberId, d.toMemberId, ...(d.splitParticipantIds || [])]),
+    ...scopedPayments.flatMap(p => [p.fromMemberId, p.toMemberId])
+  ])].filter(id => id && id !== "group") : [];
+  const membersForSelectedMonimon = historicMemberIds.map(id => memberById.get(id)).filter(Boolean);
   const shareBaseUrl = PUBLIC_APP_URL || `${window.location.origin}${window.location.pathname}`;
   const shareCode = selectedMonimon ? inviteCodeForMonimon(selectedMonimon) : "";
   const shareUrl = selectedMonimon ? `${shareBaseUrl}/grupo/${encodeURIComponent(shareCode)}` : "";
@@ -2097,72 +2027,72 @@ function Dashboard({
   const historyPayments = scopedPayments;
   const historyActivityLog = activityLog.filter((item) => item.monimonId === selectedMonimonId);
 
-  function acceptGroupInvite(inviteToken, { quiet = false } = {}) {
-    if (!inviteToken || !activeUser?.id) {
-      return { ok: false, error: "Pegá un link o código de invitación." };
-    }
-    const normalizedInviteToken = normalizedSearch(inviteToken);
-    const group = monimons.find((monimon) => (
-      normalizedSearch(inviteCodeForMonimon(monimon)) === normalizedInviteToken
-    ));
-    if (!group) {
-      if (!quiet) window.alert("No encontré ese grupo. Revisá que el link o código esté completo.");
-      return { ok: false, error: "No encontré ese grupo. Revisá que el link o código esté completo." };
-    }
-    const membership = monimonMembers.find((item) => item.monimonId === group.id && item.memberId === activeUser.id && item.status !== "removed");
-    if (membership?.status === "active") {
-      setSelectedMonimonId(group.id);
-      setShowJoinMonimon(false);
-      window.localStorage.removeItem(pendingInviteStorageKey);
-      if (!quiet) {
-        setToastMessage(`Ya estás en ${group.name}.`);
-        window.setTimeout(() => setToastMessage(""), 2200);
-      }
-      return { ok: true, group };
-    }
-    if (membership?.status === "pending") {
-      setMonimonMembers((items) => items.map((item) => (
-        item.monimonId === group.id && item.memberId === activeUser.id
-          ? { ...item, status: "active", linkedAt: new Date().toISOString() }
-          : item
-      )));
-      recordActivity?.({
-        monimonId: group.id,
-        memberId: activeUser.id,
-        activity: "Aceptación de invitación al grupo",
-        destination: group.name
-      });
-      setSelectedMonimonId(group.id);
-      setShowJoinMonimon(false);
-      window.localStorage.removeItem(pendingInviteStorageKey);
-      setToastMessage(`Te uniste a ${group.name}.`);
-      window.setTimeout(() => setToastMessage(""), 2200);
-      return { ok: true, group };
-    }
-    replaceMonimons(monimons.map((monimon) => (
-      monimon.id === group.id
-        ? { ...monimon, members: [...new Set([...(monimon.members || []), activeUser.id])] }
-        : monimon
-    )));
-    recordActivity?.({
-      monimonId: group.id,
-      memberId: activeUser.id,
-      activity: "Agregado de integrante",
-      destination: userLabel(activeUser.id, appUsers),
-      destinationMemberId: activeUser.id
-    });
-    setSelectedMonimonId(group.id);
-    setShowJoinMonimon(false);
+  function dismissInvite() {
+    setInvitePreview(null);
     window.localStorage.removeItem(pendingInviteStorageKey);
-    setToastMessage(`Te uniste a ${group.name}.`);
-    window.setTimeout(() => setToastMessage(""), 2200);
-    return { ok: true, group };
+    if (window.location.pathname.startsWith("/grupo/")) window.history.replaceState(null, "", "/");
   }
+
+  function acceptGroupInvite(inviteToken) {
+    const group = monimons.find(item => normalizedSearch(inviteCodeForMonimon(item)) === normalizedSearch(inviteToken));
+    if (!group) return { ok: false, error: "No encontré ese grupo. Revisá el enlace." };
+    if (activeGroups.some(item => item.id === group.id)) {
+      setSelectedMonimonId(group.id);
+      dismissInvite();
+    } else {
+      setJoiningAs("");
+      setGroupError("");
+      setInvitePreview(group);
+    }
+    setShowJoinMonimon(false);
+    return { ok: true };
+  }
+
+  async function confirmJoin() {
+    if (!joiningAs || !invitePreview) return;
+    setGroupBusy(true);
+    setGroupError("");
+    try {
+      await groupAction("/api/groups/join", { inviteCode: inviteCodeForMonimon(invitePreview), guestId: joiningAs === "new" ? null : joiningAs });
+      if (joiningAs === "new") setSelectedMonimonId(invitePreview.id);
+      else setShowRequests(true);
+      setToastMessage(joiningAs === "new" ? "Te uniste al grupo." : "Solicitud enviada. Un administrador confirmará tu vinculación.");
+      dismissInvite();
+    } catch (error) { setGroupError(error.message); }
+    finally { setGroupBusy(false); }
+  }
+
+  async function leaveGroup(group) {
+    if (!window.confirm(`¿Salir de ${group.name}? Tus movimientos anteriores se conservan.`)) return;
+    await groupAction("/api/groups/leave", { groupId: group.id });
+    dismissInvite();
+    setSelectedMonimonId("");
+    setEditingMonimonId(null);
+    setToastMessage("Saliste del grupo. Tu agenda no cambió.");
+  }
+
+  async function resolveIdentity(request, approve) {
+    setGroupBusy(true);
+    setGroupError("");
+    try {
+      await groupAction(approve ? "/api/groups/link-member" : "/api/groups/reject-identity", approve
+        ? { groupId: request.monimonId, guestId: request.guestId, targetId: request.memberId }
+        : { requestId: request.id });
+    } catch (error) { setGroupError(error.message); }
+    finally { setGroupBusy(false); }
+  }
+
+  const pendingIdentityRequests = identityRequests.filter(request => request.status === "pending" && monimons.some(group =>
+    group.id === request.monimonId && group.adminIds?.includes(activeUser.id)));
+  const ownIdentityRequests = identityRequests.filter(request => request.memberId === activeUser.id);
+  const groupInvitations = monimonMembers.filter(member => member.memberId === activeUser.id && member.status === "pending")
+    .map(member => monimons.find(group => group.id === member.monimonId)).filter(Boolean);
+  const notificationCount = incomingContactRequests.length + pendingIdentityRequests.length + groupInvitations.length;
 
   useEffect(() => {
     const inviteToken = inviteTokenFromText(window.location.href) || window.localStorage.getItem(pendingInviteStorageKey) || "";
     if (!inviteToken || handledInviteRef.current === inviteToken) return;
-    const result = acceptGroupInvite(inviteToken, { quiet: true });
+    const result = acceptGroupInvite(inviteToken);
     if (result.ok) handledInviteRef.current = inviteToken;
   }, [activeUser?.id, monimons, monimonMembers]);
 
@@ -2286,6 +2216,11 @@ function Dashboard({
   }
 
   function saveEditedDebt({ id, title, category, amount, currency, date, fromMemberId, toMemberId, kind, splitParticipantIds, splitMode, splitAmounts, splitPercentages }) {
+    if (!sameCanonicalValue(editingDebt, debts.find(item => item.id === id))) {
+      setToastMessage("El gasto cambió mientras lo editabas. Volvé a abrirlo para conservar los cambios compartidos.");
+      setEditingDebt(null);
+      return;
+    }
     const parsedAmount = parseAmountInput(amount);
     if (!title.trim() || parsedAmount <= 0) return;
     const previousDebt = debts.find((item) => item.id === id);
@@ -2514,7 +2449,7 @@ function Dashboard({
                   {selectedGroupIconOption.emoji}
                 </span>
                 <h1 className="workspace-group-title">{selectedMonimon.name}</h1>
-                {canManageSelectedGroup && (
+                {(
                   <button
                     type="button"
                     className="edit-monimon-btn"
@@ -2534,6 +2469,10 @@ function Dashboard({
             </div>
           )}
           <div className="topbar-actions flex items-center gap-3">
+            <button type="button" className="notifications-trigger" aria-label={`Solicitudes${notificationCount ? `: ${notificationCount} pendientes` : ""}`} onClick={() => { setGroupError(""); setShowRequests(true); }}>
+              <Bell size={21} />
+              {notificationCount > 0 && <span className="notification-count">{notificationCount}</span>}
+            </button>
             <div className="profile-area" ref={profileAreaRef}>
               <button type="button" className="profile-trigger" onClick={() => setProfileMenuOpen((open) => !open)}>
                 <Avatar user={activeUser} />
@@ -2582,7 +2521,7 @@ function Dashboard({
           <section className="content-area">
             {selectedMonimon && (
               <div className="workspace-people workspace-people-strip">
-                {membersForSelectedMonimon.map((member) => <PersonChip key={member.id} color={memberFrameColor(selectedMonimon, member.id)}>{shortDisplayName(member.name)}</PersonChip>)}
+                {membersForSelectedMonimon.filter(member => selectedMonimon.members.includes(member.id)).map((member) => <PersonChip key={member.id} color={memberFrameColor(selectedMonimon, member.id)}>{shortDisplayName(member.name)}</PersonChip>)}
               </div>
             )}
             <div className="dashboard-grid">
@@ -2634,22 +2573,6 @@ function Dashboard({
                     <ArchivePanel files={archiveFiles} setFiles={setArchiveFiles} activeUser={activeUser} monimonId={selectedMonimonId} />
                   </section>
                 )}
-                {activeView === "solicitudes" && (
-                  <section className="glass-card panel">
-                    <PanelTitle icon={<Bell size={18} />} title="Solicitudes" />
-                    <RequestsPanel
-                      requests={scopedPaymentRequests}
-                      contactRequests={incomingContactRequests}
-                      activeUser={activeUser}
-                      appUsers={appUsers}
-                      selectedMonimon={selectedMonimon}
-                      approvePaymentRequest={approvePaymentRequest}
-                      rejectPaymentRequest={rejectPaymentRequest}
-                      approveContactRequest={approveContactRequest}
-                      rejectContactRequest={rejectContactRequest}
-                    />
-                  </section>
-                )}
                 {activeView === "pago" && (
                   <PaymentPanel
                     appTheme={appTheme}
@@ -2689,7 +2612,47 @@ function Dashboard({
         </div>
       </div>
       {toastMessage && <div className="app-toast" role="status">{toastMessage}</div>}
-      {saveError && <div className="app-toast app-toast-error" role="alert">{saveError}</div>}
+      {saveError && <div className="app-toast app-toast-error" role="alert">{saveError}
+        {syncConflict && <button type="button" onClick={() => { if (window.confirm("¿Descartar tu edición pendiente y cargar la versión compartida?")) reloadSharedState(); }}>Cargar versión compartida</button>}
+      </div>}
+      {showRequests && (
+        <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="requests-title">
+          <section className="create-modal global-requests-modal">
+            <div className="modal-head"><h2 id="requests-title">Solicitudes</h2><button type="button" onClick={() => setShowRequests(false)} aria-label="Cerrar solicitudes"><X size={20} /></button></div>
+            {groupError && <p role="alert" className="form-error">{groupError}</p>}
+            {groupInvitations.map(group => <article className="identity-request" key={group.id}>
+              <p>Te invitaron a <strong>{group.name}</strong>.</p>
+              <button type="button" className="primary-action" onClick={() => { setShowRequests(false); acceptGroupInvite(inviteCodeForMonimon(group)); }}>Ver invitación</button>
+            </article>)}
+            {pendingIdentityRequests.map(request => <article className="identity-request" key={request.id}>
+              <p><strong>{userLabel(request.memberId, appUsers)}</strong> quiere vincular su cuenta con <strong>{userLabel(request.guestId, appUsers)}</strong> en {monimons.find(group => group.id === request.monimonId)?.name}.</p>
+              <p>Confirmá solamente si representan a la misma persona. Sus movimientos se conservarán bajo una única cuenta.</p>
+              <div className="confirm-actions"><button type="button" disabled={groupBusy} onClick={() => resolveIdentity(request, false)}>Rechazar</button><button type="button" className="primary-action" disabled={groupBusy} onClick={() => resolveIdentity(request, true)}>Confirmar vinculación</button></div>
+            </article>)}
+            {ownIdentityRequests.map(request => <p key={request.id} className="identity-request">Vinculación en {monimons.find(group => group.id === request.monimonId)?.name}: {request.status === "pending" ? "esperando confirmación del administrador" : request.status === "approved" ? "aprobada" : "rechazada"}.</p>)}
+            <RequestsPanel contactRequests={incomingContactRequests} appUsers={appUsers} approveContactRequest={approveContactRequest} rejectContactRequest={rejectContactRequest} hideEmpty={pendingIdentityRequests.length > 0 || ownIdentityRequests.length > 0 || groupInvitations.length > 0} />
+            <button type="button" className="secondary-action" onClick={() => { setShowRequests(false); setShowContacts(true); }}>Abrir agenda</button>
+          </section>
+        </div>
+      )}
+      {invitePreview && (
+        <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="invite-identity-title">
+          <section className="create-modal join-monimon-modal">
+            <div className="modal-head"><h2 id="invite-identity-title">Unirte a {invitePreview.name}</h2><button type="button" disabled={groupBusy} onClick={dismissInvite} aria-label="Cerrar invitación"><X size={20} /></button></div>
+            <p>¿Ya figurás como invitado en este grupo?</p>
+            <fieldset className="identity-options" disabled={groupBusy}>
+              <legend>Elegí cómo unirte</legend>
+              {invitePreview.members.map(id => appUsers.find(member => member.id === id)).filter(member => member && !member.profileId).map(member => (
+                <label key={member.id}><input type="radio" name="join-identity" checked={joiningAs === member.id} onChange={() => setJoiningAs(member.id)} />Soy {member.name}</label>
+              ))}
+              <label><input type="radio" name="join-identity" checked={joiningAs === "new"} onChange={() => setJoiningAs("new")} />Soy una persona nueva en el grupo</label>
+            </fieldset>
+            <p>{joiningAs && joiningAs !== "new" ? "Un administrador confirmará la vinculación. No se creará un integrante duplicado ni se moverán gastos antes de su aprobación." : "Los gastos anteriores conservarán sus participantes y repartos."}</p>
+            {groupError && <p role="alert" className="form-error">{groupError}</p>}
+            <button type="button" className="primary-action" disabled={!joiningAs || groupBusy} onClick={confirmJoin}>{groupBusy ? "Guardando…" : joiningAs && joiningAs !== "new" ? "Solicitar vinculación" : "Unirme"}</button>
+          </section>
+        </div>
+      )}
       {selectedMonimon && <MobileNav activeView={activeView} setActiveView={setActiveView} items={currentNavItems} />}
       {showContacts && (
         <div className="modal-layer">
@@ -2749,6 +2712,8 @@ function Dashboard({
           appUsers={appUsers}
           setMembers={setMembers}
           monimon={editingMonimon}
+          onLeaveGroup={leaveGroup}
+          onLinkMember={(groupId, guestId, targetId) => groupAction("/api/groups/link-member", { groupId, guestId, targetId })}
           monimons={monimons}
           monimonMembers={monimonMembers}
           setMonimonMembers={setMonimonMembers}
@@ -2767,7 +2732,7 @@ function Dashboard({
         <EditDebtModal
           activeUser={activeUser}
           appUsers={appUsers}
-          selectedMonimon={selectedMonimon}
+          selectedMonimon={selectedMonimon && { ...selectedMonimon, members: membersForSelectedMonimon.map(member => member.id) }}
           selectedMonimonId={selectedMonimonId}
           debt={editingDebt}
           onClose={() => setEditingDebt(null)}
@@ -2787,7 +2752,7 @@ function Dashboard({
         <DebtModal
           activeUser={activeUser}
           appUsers={appUsers}
-          selectedMonimon={selectedMonimon}
+          selectedMonimon={selectedMonimon && { ...selectedMonimon, members: selectedMonimon.members.filter(id => monimonMembers.some(member => member.monimonId === selectedMonimon.id && member.memberId === id && member.status === "active")) }}
           selectedMonimonId={selectedMonimonId}
           title={activeView === "prestamos" ? "Nuevo préstamo" : "Nuevo gasto"}
           kind={activeView === "prestamos" ? "loan" : "expense"}
@@ -3919,7 +3884,8 @@ function GroupSpace({ groups, appUsers, groupHubActionsOpen, setGroupHubActionsO
   );
 }
 
-function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimons, monimonMembers = [], setMonimonMembers, replaceMonimons, setDebts, setPayments, setPaymentRequests, setSelectedMonimonId, onDeleteMonimon, contacts, onActivity, onClose }) {
+function CreateMonimonModal({ onLinkMember, onLeaveGroup, activeUser, appUsers, setMembers, monimon, monimons, monimonMembers = [], setMonimonMembers, replaceMonimons, setDebts, setPayments, setPaymentRequests, setSelectedMonimonId, onDeleteMonimon, contacts, onActivity, onClose }) {
+  const originalGroup = useRef(monimon);
   const [monimonName, setMonimonName] = useState(monimon?.name || "");
   const [groupIcon, setGroupIcon] = useState(monimon?.icon || "home");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
@@ -3948,12 +3914,8 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
     && user.profileId
     && user.memberStatus !== "ghost"
   ));
-  const availableLinkUsers = appUsers.filter((user) => (
-    contactMemberIds.has(user.id)
-    && user.profileId
-    && user.memberStatus !== "ghost"
-    && !memberIds.includes(user.id)
-  ));
+  const availableLinkUsers = appUsers.filter(user =>
+    (contactMemberIds.has(user.id) || memberIds.includes(user.id)) && user.profileId && user.memberStatus !== "ghost");
   const membershipByMemberId = new Map(
     monimonMembers
       .filter((membership) => membership.monimonId === monimon?.id && membership.status !== "removed")
@@ -3978,36 +3940,6 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
       }
       return { ...items, [memberId]: color };
     });
-  }
-
-  function replaceMemberIdInObject(value, fromId, toId) {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-    return Object.fromEntries(Object.entries(value).map(([key, amount]) => [key === fromId ? toId : key, amount]));
-  }
-
-  function replaceMemberIdInRecords(records, fromId, toId) {
-    return records.map((record) => ({
-      ...record,
-      fromMemberId: record.fromMemberId === fromId ? toId : record.fromMemberId,
-      toMemberId: record.toMemberId === fromId ? toId : record.toMemberId,
-      requestedByMemberId: record.requestedByMemberId === fromId ? toId : record.requestedByMemberId,
-      rejectedByMemberId: record.rejectedByMemberId === fromId ? toId : record.rejectedByMemberId,
-      registeredByMemberId: record.registeredByMemberId === fromId ? toId : record.registeredByMemberId,
-      approvedByMemberIds: Array.isArray(record.approvedByMemberIds)
-        ? [...new Set(record.approvedByMemberIds.map((id) => (id === fromId ? toId : id)))]
-        : record.approvedByMemberIds,
-      requiredApproverMemberIds: Array.isArray(record.requiredApproverMemberIds)
-        ? [...new Set(record.requiredApproverMemberIds.map((id) => (id === fromId ? toId : id)))]
-        : record.requiredApproverMemberIds,
-      verifiedByMemberIds: Array.isArray(record.verifiedByMemberIds)
-        ? [...new Set(record.verifiedByMemberIds.map((id) => (id === fromId ? toId : id)))]
-        : record.verifiedByMemberIds,
-      splitParticipantIds: Array.isArray(record.splitParticipantIds)
-        ? [...new Set(record.splitParticipantIds.map((id) => (id === fromId ? toId : id)))]
-        : record.splitParticipantIds,
-      splitAmounts: replaceMemberIdInObject(record.splitAmounts, fromId, toId),
-      splitPercentages: replaceMemberIdInObject(record.splitPercentages, fromId, toId)
-    }));
   }
 
   function addMember() {
@@ -4111,92 +4043,39 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
     setError("");
   }
 
-  function linkGuestToContact() {
-    if (!canLinkGuests || !linkingGuestId) {
-      setError("Solo un administrador puede vincular invitados.");
-      return;
-    }
-    if (!linkTargetId) {
-      setError("Seleccioná un contacto para vincular.");
-      return;
-    }
-    const guest = appUsers.find((user) => user.id === linkingGuestId);
-    const linkedUser = appUsers.find((user) => user.id === linkTargetId);
-    if (!guest || !linkedUser) {
-      setError("No encontré el invitado o el contacto seleccionado.");
-      return;
-    }
-    const now = new Date().toISOString();
-    setMemberIds((items) => [...new Set(items.map((id) => (id === linkingGuestId ? linkTargetId : id)))]);
-    setAdminIds((items) => [...new Set(items.map((id) => (id === linkingGuestId ? linkTargetId : id)))]);
-    setMemberColors((items) => {
-      const { [linkingGuestId]: guestColor, ...rest } = items;
-      return guestColor && !rest[linkTargetId] ? { ...rest, [linkTargetId]: guestColor } : rest;
-    });
-    replaceMonimons(monimons.map((item) => (
-      item.id === monimon.id
-        ? {
-            ...item,
-            members: [...new Set((item.members || []).map((id) => (id === linkingGuestId ? linkTargetId : id)))],
-            memberColors: cleanMemberColors({
-              ...(item.memberColors || {}),
-              ...(item.memberColors?.[linkingGuestId] && !item.memberColors?.[linkTargetId] ? { [linkTargetId]: item.memberColors[linkingGuestId] } : {})
-            }, [...new Set((item.members || []).map((id) => (id === linkingGuestId ? linkTargetId : id)))])
-          }
-        : item
-    )));
-    setMonimonMembers?.((items) => {
-      const linkedMemberships = items
-        .filter((item) => !(item.monimonId === monimon.id && item.memberId === linkTargetId))
-        .map((item) => (
-          item.monimonId === monimon.id && item.memberId === linkingGuestId
-            ? { ...item, memberId: linkTargetId, status: "active", source: "linked", linkedFromMemberId: linkingGuestId, linkedByMemberId: activeUser.id, linkedAt: now }
-            : item
-        ));
-      const hasLinkedMembership = linkedMemberships.some((item) => item.monimonId === monimon.id && item.memberId === linkTargetId);
-      return hasLinkedMembership
-        ? linkedMemberships
-        : [
-            ...linkedMemberships,
-            {
-              monimonId: monimon.id,
-              memberId: linkTargetId,
-              status: "active",
-              source: "linked",
-              linkedFromMemberId: linkingGuestId,
-              linkedByMemberId: activeUser.id,
-              createdAt: now,
-              linkedAt: now
-            }
-          ];
-    });
-    setMembers((items) => items.map((member) => (
-      member.id === linkingGuestId
-        ? { ...member, status: "linked", linkedProfileId: linkTargetId, linkedAt: now }
-        : member
-    )));
-    setDebts?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
-    setPayments?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
-    setPaymentRequests?.((items) => replaceMemberIdInRecords(items, linkingGuestId, linkTargetId));
-    onActivity?.({
-      monimonId: monimon.id,
-      memberId: activeUser.id,
-      activity: "Vinculación de integrante",
-      destination: `${shortDisplayName(guest.name)} -> ${shortDisplayName(linkedUser.name)}`,
-      destinationMemberId: linkTargetId
-    });
-    setLinkingGuestId(null);
-    setLinkTargetId("");
+  const [linkBusy, setLinkBusy] = useState(false);
+  async function linkGuestToContact() {
+    if (!canLinkGuests || !linkingGuestId || !linkTargetId) { setError("Seleccioná una cuenta para vincular."); return; }
+    const guest = appUsers.find(user => user.id === linkingGuestId);
+    const target = appUsers.find(user => user.id === linkTargetId);
+    if (!window.confirm(`¿Confirmás que ${guest?.name} y ${target?.name} son la misma persona? Se unificarán sus movimientos en este grupo.`)) return;
+    setLinkBusy(true);
     setError("");
+    try {
+      await onLinkMember(monimon.id, linkingGuestId, linkTargetId);
+      onClose();
+    } catch (error) { setError(error.message); }
+    finally { setLinkBusy(false); }
+  }
+
+  async function leave() {
+    setLinkBusy(true);
+    setError("");
+    try { await onLeaveGroup(monimon); } catch (error) { setError(error.message); }
+    finally { setLinkBusy(false); }
   }
 
   function saveMonimon() {
+    if (isEditing && !sameCanonicalValue(originalGroup.current, monimons.find(item => item.id === monimon.id))) {
+      setError("El grupo cambió mientras lo editabas. Cerrá y volvé a abrir la configuración para conservar esos cambios.");
+      return;
+    }
     const cleanName = monimonName.trim();
     if (!cleanName) {
       setError("Ingresá un nombre para el grupo.");
       return;
     }
-    if (memberIds.length < 2) {
+    if (memberIds.length < (isEditing ? 1 : 2)) {
       setError("Agregá al menos otro integrante.");
       return;
     }
@@ -4274,6 +4153,17 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
     setSelectedMonimonId(id);
     onClose();
   }
+
+  if (isEditing && !canLinkGuests) return (
+    <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="member-group-title">
+      <section className="create-modal">
+        <div className="modal-head"><h2 id="member-group-title">{monimon.name}</h2><button type="button" onClick={onClose} aria-label="Cerrar">×</button></div>
+        <p>Sos integrante de este grupo. Podés salir conservando los movimientos anteriores.</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button type="button" className="secondary-action" disabled={linkBusy} onClick={leave}>Salir del grupo</button>
+      </section>
+    </div>
+  );
 
   return (
     <div className="modal-layer" role="dialog" aria-modal="true" aria-labelledby="create-monimon-title">
@@ -4382,7 +4272,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
                     <input
                       type="checkbox"
                       checked={isAdmin}
-                      disabled={isLastAdmin}
+                      disabled={isLastAdmin || isEditableGuest || isPendingMember}
                       onChange={() => toggleAdmin(memberId)}
                       aria-label={`Administrador: ${memberName}`}
                     />
@@ -4417,7 +4307,7 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
                       </button>
                     )}
                     {linkingGuestId === memberId && (
-                      <button type="button" onClick={linkGuestToContact} aria-label="Vincular invitado">
+                      <button type="button" onClick={linkGuestToContact} disabled={linkBusy} aria-label="Vincular invitado">
                         <Check size={15} />
                       </button>
                     )}
@@ -4483,10 +4373,11 @@ function CreateMonimonModal({ activeUser, appUsers, setMembers, monimon, monimon
           <button type="button" className="secondary-action cancel-monimon" onClick={onClose}>
             Cancelar
           </button>
-          <button type="button" className="primary-action modal-create-btn" onClick={saveMonimon}>
+          <button type="button" className="primary-action modal-create-btn" onClick={saveMonimon} disabled={linkBusy}>
             {isEditing ? "ACTUALIZAR CAMBIOS" : "CREAR"}
           </button>
         </div>
+        {isEditing && <button type="button" className="secondary-action" disabled={linkBusy} onClick={leave}>Salir del grupo</button>}
         {isEditing && (
           <section className="danger-zone-section">
             <button
@@ -6230,11 +6121,11 @@ function userLabel(userId, appUsers) {
   return userName ? shortDisplayName(userName) : userId?.toUpperCase?.() || "Usuario";
 }
 
-function RequestsPanel({ contactRequests = [], appUsers, approveContactRequest, rejectContactRequest }) {
+function RequestsPanel({ contactRequests = [], appUsers, approveContactRequest, rejectContactRequest, hideEmpty = false }) {
   const orderedContactRequests = [...contactRequests].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
   if (!orderedContactRequests.length) {
-    return <EmptyState text="Todavía no hay solicitudes." />;
+    return hideEmpty ? null : <EmptyState text="Todavía no hay solicitudes." />;
   }
 
   return (
