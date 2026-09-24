@@ -2665,6 +2665,7 @@ function Dashboard({
       )}
       {showCreateMonimon && !editingMonimonId && (
         <CreateMonimonModal
+          appTheme={appTheme}
           activeUser={activeUser}
           appUsers={appUsers}
           setMembers={setMembers}
@@ -2705,6 +2706,7 @@ function Dashboard({
       )}
       {editingMonimon && (
         <CreateMonimonModal
+          appTheme={appTheme}
           activeUser={activeUser}
           appUsers={appUsers}
           setMembers={setMembers}
@@ -3886,8 +3888,9 @@ function GroupSpace({ groups, appUsers, groupHubActionsOpen, setGroupHubActionsO
   );
 }
 
-function CreateMonimonModal({ onLinkMember, onLeaveGroup, activeUser, appUsers, setMembers, monimon, monimons, monimonMembers = [], setMonimonMembers, replaceMonimons, setDebts, setPayments, setPaymentRequests, setSelectedMonimonId, onDeleteMonimon, contacts, onActivity, onClose }) {
+function CreateMonimonModal({ appTheme, onLinkMember, onLeaveGroup, activeUser, appUsers, setMembers, monimon, monimons, monimonMembers = [], setMonimonMembers, replaceMonimons, setDebts, setPayments, setPaymentRequests, setSelectedMonimonId, onDeleteMonimon, contacts, onActivity, onClose }) {
   const originalGroup = useRef(monimon);
+  const groupIconTriggerRef = useRef(null);
   const [monimonName, setMonimonName] = useState(monimon?.name || "");
   const [groupIcon, setGroupIcon] = useState(monimon?.icon || "home");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
@@ -4181,30 +4184,15 @@ function CreateMonimonModal({ onLinkMember, onLeaveGroup, activeUser, appUsers, 
               <button
                 type="button"
                 className="group-emoji-trigger"
+                ref={groupIconTriggerRef}
                 onClick={() => setIconPickerOpen((open) => !open)}
                 aria-label={`Icono del grupo: ${groupIconOptions.find((option) => option.id === groupIcon)?.label || "Casa"}`}
                 aria-expanded={iconPickerOpen}
+                aria-haspopup="dialog"
               >
                 {groupIconOptions.find((option) => option.id === groupIcon)?.emoji || groupIconOptions[0].emoji}
               </button>
-              {iconPickerOpen && (
-                <div className="group-emoji-menu">
-                  {groupIconOptions.map(({ id, label, emoji }) => (
-                    <button
-                      type="button"
-                      key={id}
-                      className={`group-emoji-option ${groupIcon === id ? "active" : ""}`}
-                      onClick={() => {
-                        setGroupIcon(id);
-                        setIconPickerOpen(false);
-                      }}
-                    >
-                      <span aria-hidden="true">{emoji}</span>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {iconPickerOpen && <GroupIconPicker appTheme={appTheme} returnFocusRef={groupIconTriggerRef} value={groupIcon} onSelect={setGroupIcon} onClose={() => setIconPickerOpen(false)} />}
             </div>
             <input value={monimonName} maxLength={50} onChange={(event) => setMonimonName(event.target.value.slice(0, 50))} placeholder="Por ejemplo: Viaje a Narnia" />
           </div>
@@ -5164,6 +5152,40 @@ function DebtModal({ activeUser, appUsers, selectedMonimon, selectedMonimonId, t
         </div>
       </div>
     </div>
+  );
+}
+
+function GroupIconPicker({ appTheme, returnFocusRef, value, onSelect, onClose }) {
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    // Native modal dialogs enter the browser's top layer, outside the scroll
+    // and stacking contexts of the group editor. They also trap keyboard focus.
+    dialog.showModal();
+    dialog.querySelector('[aria-pressed="true"]')?.focus();
+    return () => { dialog.close(); returnFocusRef.current?.focus(); };
+  }, [returnFocusRef]);
+
+  return createPortal(
+    <dialog ref={dialogRef} className="group-icon-picker" data-theme={appTheme} aria-labelledby="group-icon-picker-title"
+      onCancel={event => { event.preventDefault(); onClose(); }}
+      onClick={event => {
+        if (event.target !== event.currentTarget) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
+      }}>
+      <div className="group-icon-picker-head">
+        <div><h3 id="group-icon-picker-title">Ícono del grupo</h3><p>Elegí la categoría que representa al grupo.</p></div>
+        <button type="button" onClick={onClose} aria-label="Cerrar selector de ícono"><X size={24} /></button>
+      </div>
+      <div className="group-icon-picker-grid">
+        {groupIconOptions.map(({ id, label, emoji }) => (
+          <button type="button" key={id} aria-pressed={value === id} onClick={() => { onSelect(id); onClose(); }}>
+            <span aria-hidden="true">{emoji}</span><strong>{label}</strong>
+          </button>
+        ))}
+      </div>
+    </dialog>, document.body
   );
 }
 
@@ -6228,7 +6250,7 @@ function DebtRow({ debt, selectable, checked, onToggle, members, memberColors = 
       <span className="min-w-0 flex-1">
         <span className="debt-title-line">
           {selectable && <span className={`check ${checked ? "active" : ""}`}>{checked && <Check size={13} />}</span>}
-          <b><span className="debt-category-emoji">{category.emoji}</span>{debt.title}</b>
+          <b><span className="debt-category-emoji" role="img" aria-label={`Categoría: ${category.label}`} title={category.label}>{category.emoji}</span>{debt.title}</b>
           <RowActions
             onEdit={onEditDebt ? () => onEditDebt(debt) : null}
             onRepeat={debt.kind !== "loan" && onRepeatDebt ? () => onRepeatDebt(debt) : null}
